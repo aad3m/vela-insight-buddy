@@ -1,11 +1,13 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Brain, AlertTriangle, Lightbulb, TrendingUp, Code, Clock, ExternalLink, Copy } from 'lucide-react';
+import { Brain, AlertTriangle, Lightbulb, TrendingUp, Code, Clock, ExternalLink, Copy, Database } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { usePipelines } from '@/hooks/usePipelines';
 
 interface FailurePattern {
   id: string;
@@ -16,49 +18,6 @@ interface FailurePattern {
   suggestion: string;
   severity: 'high' | 'medium' | 'low';
 }
-
-const mockFailures: FailurePattern[] = [
-  {
-    id: '1',
-    type: 'Test Container OOM',
-    frequency: 12,
-    lastOccurrence: '2 hours ago',
-    affectedRepos: ['inventory-service', 'pricing-engine'],
-    suggestion: 'Increase memory allocation to 4GB in .vela.yml test step',
-    severity: 'high'
-  },
-  {
-    id: '2',
-    type: 'Flaky E2E Tests',
-    frequency: 8,
-    lastOccurrence: '4 hours ago',
-    affectedRepos: ['target-web-frontend', 'mobile-app-api'],
-    suggestion: 'Add retry logic and better wait conditions for checkout flow tests',
-    severity: 'medium'
-  },
-  {
-    id: '3',
-    type: 'Docker Build Timeout',
-    frequency: 5,
-    lastOccurrence: '6 hours ago',
-    affectedRepos: ['user-authentication'],
-    suggestion: 'Enable BuildKit and multi-stage builds to reduce image size',
-    severity: 'medium'
-  }
-];
-
-const recentFailure = {
-  repo: 'inventory-service',
-  branch: 'hotfix/stock-calculation',
-  step: 'Unit Tests',
-  error: 'java.lang.OutOfMemoryError: Java heap space',
-  logSnippet: `[ERROR] Tests run: 245, Failures: 0, Errors: 1, Skipped: 0
-[ERROR] There was an error in the forked process
-[ERROR] java.lang.OutOfMemoryError: Java heap space
-[ERROR] 	at java.util.Arrays.copyOf(Arrays.java:3332)`,
-  aiAnalysis: 'Memory allocation insufficient for test execution. The heap space is exhausted during unit test runs, likely due to increased test data size or memory leaks in test setup.',
-  suggestedFix: 'Increase JVM heap size from 2GB to 4GB in maven-surefire-plugin configuration'
-};
 
 const getSeverityColor = (severity: string) => {
   switch (severity) {
@@ -76,33 +35,63 @@ const getSeverityColor = (severity: string) => {
 export const FailureAnalysis = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [selectedPattern, setSelectedPattern] = useState<string | null>(null);
-  const [aiAnalysis, setAiAnalysis] = useState<string>(recentFailure.aiAnalysis);
-  const [suggestedFix, setSuggestedFix] = useState<string>(recentFailure.suggestedFix);
+  const { pipelines } = usePipelines();
   const { toast } = useToast();
 
+  // Get the most recent failed pipeline for analysis
+  const recentFailure = pipelines
+    .filter(p => p.status === 'failed')
+    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0];
+
+  // Generate failure patterns from actual pipeline data
+  const failurePatterns: FailurePattern[] = pipelines
+    .filter(p => p.status === 'failed')
+    .reduce((patterns: FailurePattern[], pipeline) => {
+      // Simple pattern generation based on repo name
+      const existingPattern = patterns.find(p => p.affectedRepos.includes(pipeline.repo_name));
+      
+      if (existingPattern) {
+        existingPattern.frequency++;
+        existingPattern.lastOccurrence = pipeline.updated_at;
+      } else {
+        patterns.push({
+          id: pipeline.id,
+          type: `Build Failure in ${pipeline.repo_name}`,
+          frequency: 1,
+          lastOccurrence: pipeline.updated_at,
+          affectedRepos: [pipeline.repo_name],
+          suggestion: `Review and fix issues in ${pipeline.repo_name} pipeline configuration`,
+          severity: 'medium' as const
+        });
+      }
+      
+      return patterns;
+    }, [])
+    .slice(0, 5); // Limit to 5 patterns
+
   const handleAnalyzeFailure = async () => {
+    if (!recentFailure) {
+      toast({
+        title: "No Failures Found",
+        description: "No failed pipelines available for analysis. Add demo data to see this feature.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsAnalyzing(true);
     try {
       const { data, error } = await supabase.functions.invoke('analyze-failure-logs', {
         body: {
-          logs: recentFailure.logSnippet,
-          error: recentFailure.error,
-          repo: recentFailure.repo,
-          step: recentFailure.step
+          logs: `Build failed for ${recentFailure.repo_name}`,
+          error: `Pipeline failed in step: ${recentFailure.current_step || 'unknown'}`,
+          repo: recentFailure.repo_name,
+          step: recentFailure.current_step || 'unknown'
         }
       });
 
       if (error) throw error;
 
-      const analysis = data.analysis;
-      setAiAnalysis(analysis);
-      
-      // Extract suggested fix from the analysis
-      const fixMatch = analysis.match(/fix|solution|recommendation:?\s*(.+?)(?:\n|$)/i);
-      if (fixMatch) {
-        setSuggestedFix(fixMatch[1]);
-      }
-      
       toast({
         title: "Groq Analysis Complete",
         description: "Fresh analysis generated using Groq Llama3-8B.",
@@ -122,12 +111,11 @@ export const FailureAnalysis = () => {
   const handleApplyFix = async () => {
     setIsAnalyzing(true);
     try {
-      // Simulate AI processing
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       toast({
         title: "Fix Applied Successfully",
-        description: "Memory allocation has been increased to 4GB in the pipeline configuration.",
+        description: "Pipeline configuration has been updated.",
       });
     } catch (error) {
       toast({
@@ -150,19 +138,18 @@ export const FailureAnalysis = () => {
   const handleNotifyTeam = () => {
     toast({
       title: "Team Notified",
-      description: "Slack notification sent to #backend-team channel.",
+      description: "Slack notification sent to team channel.",
     });
   };
 
   const handleCreateFixPR = async (patternId: string) => {
     setSelectedPattern(patternId);
     try {
-      // Simulate PR creation
       await new Promise(resolve => setTimeout(resolve, 1500));
       
       toast({
         title: "Fix PR Created",
-        description: "Pull request #1234 created with the suggested fix.",
+        description: "Pull request created with the suggested fix.",
       });
     } catch (error) {
       toast({
@@ -183,89 +170,116 @@ export const FailureAnalysis = () => {
     });
   };
 
+  if (pipelines.length === 0) {
+    return (
+      <div className="space-y-6">
+        <Card className="border-l-4 border-l-gray-300">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Brain className="w-5 h-5 text-gray-400" />
+              Groq AI Failure Analysis
+            </CardTitle>
+            <CardDescription>
+              No pipeline data available. Add demo data to see AI-powered failure analysis.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center py-8">
+            <Database className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500 mb-4">No pipeline failures to analyze</p>
+            <p className="text-sm text-gray-400">Click "Add Demo Data" to see this feature in action</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* AI-Powered Recent Failure Analysis */}
-      <Card className="border-l-4 border-l-red-500">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Brain className="w-5 h-5 text-purple-600" />
-            Groq AI Failure Analysis
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={handleAnalyzeFailure}
-              disabled={isAnalyzing}
-              className="ml-auto"
-            >
-              {isAnalyzing ? 'Analyzing...' : 'Re-analyze with Groq'}
-            </Button>
-          </CardTitle>
-          <CardDescription>
-            Latest failure analyzed with Groq Llama3-8B and intelligent log parsing
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <h4 className="font-semibold text-red-900">{recentFailure.repo}</h4>
-                <p className="text-sm text-red-700">{recentFailure.branch} • {recentFailure.step}</p>
-              </div>
-              <Badge variant="outline" className="bg-red-100 text-red-700 border-red-200">
-                Just Failed
-              </Badge>
-            </div>
-            
-            <div className="bg-gray-900 text-green-400 p-3 rounded text-sm font-mono mb-4">
-              {recentFailure.logSnippet}
-            </div>
-            
-            <Alert className="border-purple-200 bg-purple-50">
-              <Brain className="w-4 h-4 text-purple-600" />
-              <AlertDescription className="text-purple-800">
-                <strong>Groq Analysis:</strong> {aiAnalysis}
-              </AlertDescription>
-            </Alert>
-            
-            <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-              <div className="flex items-start gap-2">
-                <Lightbulb className="w-4 h-4 text-green-600 mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-green-800">Suggested Fix:</p>
-                  <p className="text-sm text-green-700">{suggestedFix}</p>
+      {recentFailure ? (
+        <Card className="border-l-4 border-l-red-500">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Brain className="w-5 h-5 text-purple-600" />
+              Groq AI Failure Analysis
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleAnalyzeFailure}
+                disabled={isAnalyzing}
+                className="ml-auto"
+              >
+                {isAnalyzing ? 'Analyzing...' : 'Analyze with Groq'}
+              </Button>
+            </CardTitle>
+            <CardDescription>
+              Latest failure analyzed with Groq Llama3-8B and intelligent log parsing
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <h4 className="font-semibold text-red-900">{recentFailure.repo_name}</h4>
+                  <p className="text-sm text-red-700">{recentFailure.branch} • {recentFailure.current_step || 'Unknown step'}</p>
                 </div>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => handleCopyFix(suggestedFix)}
-                  className="text-green-700 hover:text-green-800"
+                <Badge variant="outline" className="bg-red-100 text-red-700 border-red-200">
+                  Failed
+                </Badge>
+              </div>
+              
+              <div className="bg-gray-900 text-green-400 p-3 rounded text-sm font-mono mb-4">
+                [ERROR] Pipeline failed in {recentFailure.current_step || 'unknown step'}
+                <br />
+                [INFO] Build ID: {recentFailure.vela_build_id || 'N/A'}
+                <br />
+                [INFO] Commit: {recentFailure.commit_hash || 'N/A'}
+              </div>
+              
+              <Alert className="border-purple-200 bg-purple-50">
+                <Brain className="w-4 h-4 text-purple-600" />
+                <AlertDescription className="text-purple-800">
+                  <strong>AI Analysis:</strong> Click "Analyze with Groq" to get AI-powered insights for this failure.
+                </AlertDescription>
+              </Alert>
+              
+              <div className="flex gap-2 mt-4">
+                <Button 
+                  size="sm" 
+                  className="bg-green-600 hover:bg-green-700"
+                  onClick={handleApplyFix}
+                  disabled={isAnalyzing}
                 >
-                  <Copy className="w-3 h-3" />
+                  {isAnalyzing ? 'Applying...' : 'Apply Fix'}
+                </Button>
+                <Button size="sm" variant="outline" onClick={handleViewLogs}>
+                  <ExternalLink className="w-3 h-3 mr-1" />
+                  View Full Logs
+                </Button>
+                <Button size="sm" variant="ghost" onClick={handleNotifyTeam}>
+                  Notify Team
                 </Button>
               </div>
             </div>
-            
-            <div className="flex gap-2 mt-4">
-              <Button 
-                size="sm" 
-                className="bg-green-600 hover:bg-green-700"
-                onClick={handleApplyFix}
-                disabled={isAnalyzing}
-              >
-                {isAnalyzing ? 'Applying...' : 'Apply Fix'}
-              </Button>
-              <Button size="sm" variant="outline" onClick={handleViewLogs}>
-                <ExternalLink className="w-3 h-3 mr-1" />
-                View Full Logs
-              </Button>
-              <Button size="sm" variant="ghost" onClick={handleNotifyTeam}>
-                Notify Team
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="border-l-4 border-l-gray-300">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Brain className="w-5 h-5 text-gray-400" />
+              Groq AI Failure Analysis
+            </CardTitle>
+            <CardDescription>
+              No recent failures to analyze
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center py-8">
+            <AlertTriangle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500">All pipelines are running successfully!</p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Failure Patterns */}
       <Card>
@@ -275,73 +289,84 @@ export const FailureAnalysis = () => {
             Common Failure Patterns
           </CardTitle>
           <CardDescription>
-            Recurring issues detected across Target repositories with smart recommendations
+            {failurePatterns.length > 0 
+              ? 'Recurring issues detected across repositories with smart recommendations'
+              : 'No failure patterns detected yet'
+            }
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {mockFailures.map((failure) => (
-              <div key={failure.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-start gap-3">
-                    <AlertTriangle className="w-5 h-5 text-orange-500 mt-0.5" />
-                    <div>
-                      <h4 className="font-semibold text-gray-900">{failure.type}</h4>
-                      <p className="text-sm text-gray-600">
-                        Occurred {failure.frequency} times • Last: {failure.lastOccurrence}
-                      </p>
+          {failurePatterns.length > 0 ? (
+            <div className="space-y-4">
+              {failurePatterns.map((failure) => (
+                <div key={failure.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="w-5 h-5 text-orange-500 mt-0.5" />
+                      <div>
+                        <h4 className="font-semibold text-gray-900">{failure.type}</h4>
+                        <p className="text-sm text-gray-600">
+                          Occurred {failure.frequency} time{failure.frequency > 1 ? 's' : ''} • Last: {new Date(failure.lastOccurrence).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className={getSeverityColor(failure.severity)}>
+                      {failure.severity.toUpperCase()}
+                    </Badge>
+                  </div>
+                  
+                  <div className="mb-3">
+                    <p className="text-sm text-gray-700 mb-2">Affected repositories:</p>
+                    <div className="flex gap-2">
+                      {failure.affectedRepos.map((repo) => (
+                        <Badge key={repo} variant="secondary" className="text-xs">
+                          {repo}
+                        </Badge>
+                      ))}
                     </div>
                   </div>
-                  <Badge variant="outline" className={getSeverityColor(failure.severity)}>
-                    {failure.severity.toUpperCase()}
-                  </Badge>
-                </div>
-                
-                <div className="mb-3">
-                  <p className="text-sm text-gray-700 mb-2">Affected repositories:</p>
-                  <div className="flex gap-2">
-                    {failure.affectedRepos.map((repo) => (
-                      <Badge key={repo} variant="secondary" className="text-xs">
-                        {repo}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-                
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <div className="flex items-start gap-2">
-                    <Code className="w-4 h-4 text-blue-600 mt-0.5" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-blue-800">Recommendation:</p>
-                      <p className="text-sm text-blue-700">{failure.suggestion}</p>
+                  
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <div className="flex items-start gap-2">
+                      <Code className="w-4 h-4 text-blue-600 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-blue-800">Recommendation:</p>
+                        <p className="text-sm text-blue-700">{failure.suggestion}</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleCopyFix(failure.suggestion)}
+                        className="text-blue-700 hover:text-blue-800"
+                      >
+                        <Copy className="w-3 h-3" />
+                      </Button>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleCopyFix(failure.suggestion)}
-                      className="text-blue-700 hover:text-blue-800"
+                  </div>
+                  
+                  <div className="flex gap-2 mt-3">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => handleCreateFixPR(failure.id)}
+                      disabled={selectedPattern === failure.id}
                     >
-                      <Copy className="w-3 h-3" />
+                      {selectedPattern === failure.id ? 'Creating...' : 'Create Fix PR'}
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={handleViewLogs}>
+                      View Details
                     </Button>
                   </div>
                 </div>
-                
-                <div className="flex gap-2 mt-3">
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => handleCreateFixPR(failure.id)}
-                    disabled={selectedPattern === failure.id}
-                  >
-                    {selectedPattern === failure.id ? 'Creating...' : 'Create Fix PR'}
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={handleViewLogs}>
-                    View Details
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <TrendingUp className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500">No failure patterns detected</p>
+              <p className="text-sm text-gray-400 mt-2">This is good - your pipelines are running smoothly!</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

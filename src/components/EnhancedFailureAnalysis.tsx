@@ -5,9 +5,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Brain, AlertTriangle, Lightbulb, Code, ExternalLink, Copy, BookOpen, Zap, Info } from 'lucide-react';
+import { Brain, AlertTriangle, Lightbulb, Code, ExternalLink, Copy, BookOpen, Zap, Info, Database } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { usePipelines } from '@/hooks/usePipelines';
 
 interface EnhancedAnalysis {
   analysis: string;
@@ -33,43 +34,47 @@ interface FailureData {
   pipelineConfig?: string;
 }
 
-const mockFailure: FailureData = {
-  repo: 'inventory-service',
-  branch: 'feature/stock-optimization',
-  step: 'docker-build',
-  error: 'Error response from daemon: failed to create shim task: OCI runtime create failed',
-  logs: `[INFO] Building Docker image...
-[INFO] Step 1/8 : FROM node:18-alpine
-[INFO] ---> 7b69a6d4c0a2
-[INFO] Step 2/8 : WORKDIR /app
-[INFO] ---> Running in a1b2c3d4e5f6
-[INFO] ---> 8c7d6e5f4a3b
-[INFO] Step 3/8 : COPY package*.json ./
-[INFO] ---> a2b3c4d5e6f7
-[INFO] Step 4/8 : RUN npm ci --only=production
-[ERROR] npm ERR! code EACCES
-[ERROR] npm ERR! syscall mkdir
-[ERROR] npm ERR! path /app/node_modules
-[ERROR] npm ERR! errno -13
-[ERROR] npm ERR! Error: EACCES: permission denied, mkdir '/app/node_modules'
-[ERROR] Error response from daemon: failed to create shim task: OCI runtime create failed`,
-  pipelineConfig: `version: "1"
-steps:
-  - name: docker-build
-    image: plugins/docker
-    settings:
-      repo: inventory-service
-      tags: latest
-      dockerfile: Dockerfile`
-};
-
 export const EnhancedFailureAnalysis = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<EnhancedAnalysis | null>(null);
-  const [selectedFailure] = useState<FailureData>(mockFailure);
+  const { pipelines } = usePipelines();
   const { toast } = useToast();
 
+  // Get the most recent failed pipeline for analysis
+  const recentFailure = pipelines
+    .filter(p => p.status === 'failed')
+    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0];
+
+  const selectedFailure: FailureData | null = recentFailure ? {
+    repo: recentFailure.repo_name,
+    branch: recentFailure.branch,
+    step: recentFailure.current_step || 'unknown',
+    error: `Pipeline failed in step: ${recentFailure.current_step || 'unknown'}`,
+    logs: `[INFO] Building pipeline for ${recentFailure.repo_name}
+[INFO] Branch: ${recentFailure.branch}
+[INFO] Build ID: ${recentFailure.vela_build_id || 'N/A'}
+[INFO] Commit: ${recentFailure.commit_hash || 'N/A'}
+[ERROR] Pipeline failed in step: ${recentFailure.current_step || 'unknown'}
+[ERROR] Build process terminated with exit code 1`,
+    pipelineConfig: `version: "1"
+steps:
+  - name: ${recentFailure.current_step || 'build'}
+    image: alpine
+    commands:
+      - echo "Building ${recentFailure.repo_name}"
+      - # Build commands here`
+  } : null;
+
   const handleEnhancedAnalysis = async () => {
+    if (!selectedFailure) {
+      toast({
+        title: "No Failures Found",
+        description: "No failed pipelines available for analysis. Add demo data to see this feature.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsAnalyzing(true);
     try {
       const { data, error } = await supabase.functions.invoke('enhanced-failure-analysis', {
@@ -119,6 +124,39 @@ export const EnhancedFailureAnalysis = () => {
     });
   };
 
+  if (pipelines.length === 0) {
+    return (
+      <div className="space-y-6">
+        <Alert className="border-gray-200 bg-gray-50">
+          <Info className="w-4 h-4 text-gray-600" />
+          <AlertDescription className="text-gray-800">
+            <strong>Enhanced AI Analysis:</strong> No pipeline data available. Add demo data to see advanced AI-powered failure analysis.
+          </AlertDescription>
+        </Alert>
+
+        <Card className="border-l-4 border-l-gray-300">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Brain className="w-5 h-5 text-gray-400" />
+              Enhanced AI Failure Analysis
+              <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200 ml-auto">
+                Groq + Vela Docs
+              </Badge>
+            </CardTitle>
+            <CardDescription>
+              Deep failure analysis with Vela documentation context and Groq AI-powered insights
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center py-8">
+            <Database className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500 mb-4">No pipeline data available</p>
+            <p className="text-sm text-gray-400">Click "Add Demo Data" to see enhanced AI analysis in action</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* AI Provider Information */}
@@ -131,53 +169,74 @@ export const EnhancedFailureAnalysis = () => {
       </Alert>
 
       {/* Current Failure Analysis */}
-      <Card className="border-l-4 border-l-red-500">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Brain className="w-5 h-5 text-purple-600" />
-            Enhanced AI Failure Analysis
-            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 ml-auto">
-              Groq + Vela Docs
-            </Badge>
-          </CardTitle>
-          <CardDescription>
-            Deep failure analysis with Vela documentation context and Groq AI-powered insights
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <h4 className="font-semibold text-red-900">{selectedFailure.repo}</h4>
-                <p className="text-sm text-red-700">{selectedFailure.branch} • {selectedFailure.step}</p>
-              </div>
-              <Badge variant="outline" className="bg-red-100 text-red-700 border-red-200">
-                Active Failure
+      {selectedFailure ? (
+        <Card className="border-l-4 border-l-red-500">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Brain className="w-5 h-5 text-purple-600" />
+              Enhanced AI Failure Analysis
+              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 ml-auto">
+                Groq + Vela Docs
               </Badge>
+            </CardTitle>
+            <CardDescription>
+              Deep failure analysis with Vela documentation context and Groq AI-powered insights
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <h4 className="font-semibold text-red-900">{selectedFailure.repo}</h4>
+                  <p className="text-sm text-red-700">{selectedFailure.branch} • {selectedFailure.step}</p>
+                </div>
+                <Badge variant="outline" className="bg-red-100 text-red-700 border-red-200">
+                  Active Failure
+                </Badge>
+              </div>
+              
+              <div className="bg-gray-900 text-green-400 p-3 rounded text-sm font-mono mb-4 max-h-40 overflow-y-auto">
+                {selectedFailure.logs}
+              </div>
+              
+              <Alert className="border-red-200 bg-red-50 mb-4">
+                <AlertTriangle className="w-4 h-4 text-red-600" />
+                <AlertDescription className="text-red-800">
+                  <strong>Error:</strong> {selectedFailure.error}
+                </AlertDescription>
+              </Alert>
+              
+              <Button 
+                onClick={handleEnhancedAnalysis}
+                disabled={isAnalyzing}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <Brain className="w-4 h-4 mr-2" />
+                {isAnalyzing ? 'Analyzing with Groq...' : 'Run Groq Analysis'}
+              </Button>
             </div>
-            
-            <div className="bg-gray-900 text-green-400 p-3 rounded text-sm font-mono mb-4 max-h-40 overflow-y-auto">
-              {selectedFailure.logs}
-            </div>
-            
-            <Alert className="border-red-200 bg-red-50 mb-4">
-              <AlertTriangle className="w-4 h-4 text-red-600" />
-              <AlertDescription className="text-red-800">
-                <strong>Error:</strong> {selectedFailure.error}
-              </AlertDescription>
-            </Alert>
-            
-            <Button 
-              onClick={handleEnhancedAnalysis}
-              disabled={isAnalyzing}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              <Brain className="w-4 h-4 mr-2" />
-              {isAnalyzing ? 'Analyzing with Groq...' : 'Run Groq Analysis'}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="border-l-4 border-l-gray-300">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Brain className="w-5 h-5 text-gray-400" />
+              Enhanced AI Failure Analysis
+              <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200 ml-auto">
+                Groq + Vela Docs
+              </Badge>
+            </CardTitle>
+            <CardDescription>
+              No recent failures to analyze
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center py-8">
+            <Zap className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500">All pipelines are running successfully!</p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Enhanced Analysis Results */}
       {analysis && (

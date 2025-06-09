@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Zap, FileText, CheckCircle, AlertTriangle, Clock, Gauge, Copy, Download, Upload, FileCheck, Brain, GitCompare } from 'lucide-react';
+import { Zap, FileText, CheckCircle, AlertTriangle, Clock, Gauge, Copy, Download, Upload, FileCheck, Brain, GitCompare, Database } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { usePipelines } from '@/hooks/usePipelines';
 
 interface Optimization {
   id: string;
@@ -21,53 +22,6 @@ interface Optimization {
   repo: string;
   file: string;
 }
-
-const optimizations: Optimization[] = [
-  {
-    id: '1',
-    type: 'performance',
-    title: 'Enable Docker BuildKit',
-    description: 'Use BuildKit for faster Docker builds with layer caching and parallel execution',
-    impact: 'high',
-    effort: 'low',
-    savingsTime: '40% faster builds',
-    repo: 'target-web-frontend',
-    file: '.vela.yml'
-  },
-  {
-    id: '2',
-    type: 'cost',
-    title: 'Optimize Test Parallelization',
-    description: 'Split test suites across multiple workers to reduce total runtime',
-    impact: 'medium',
-    effort: 'medium',
-    savingsTime: '25% faster tests',
-    savingsCost: '$120/month',
-    repo: 'inventory-service',
-    file: '.vela.yml'
-  },
-  {
-    id: '3',
-    type: 'reliability',
-    title: 'Add Retry Logic for Flaky Steps',
-    description: 'Automatically retry known flaky deployment steps to improve success rate',
-    impact: 'high',
-    effort: 'low',
-    repo: 'mobile-app-api',
-    file: '.vela.yml'
-  },
-  {
-    id: '4',
-    type: 'performance',
-    title: 'Implement Smart Caching',
-    description: 'Cache dependencies and build artifacts between pipeline runs',
-    impact: 'high',
-    effort: 'medium',
-    savingsTime: '60% faster dependency install',
-    repo: 'pricing-engine',
-    file: '.vela.yml'
-  }
-];
 
 const configExample = {
   before: `version: "1"
@@ -169,7 +123,70 @@ export const ConfigOptimizer = () => {
   const [analysisResult, setAnalysisResult] = useState<string>('');
   const [optimizedConfig, setOptimizedConfig] = useState<string>('');
   const [showDiff, setShowDiff] = useState(false);
+  const { pipelines } = usePipelines();
   const { toast } = useToast();
+
+  // Generate optimizations based on actual pipeline data
+  const optimizations: Optimization[] = pipelines
+    .reduce((opts: Optimization[], pipeline) => {
+      // Generate optimization suggestions based on pipeline data
+      if (pipeline.duration) {
+        const match = pipeline.duration.match(/(\d+)m/);
+        const minutes = match ? parseInt(match[1]) : 0;
+        
+        if (minutes > 10) {
+          opts.push({
+            id: `${pipeline.id}-cache`,
+            type: 'performance',
+            title: 'Enable Dependency Caching',
+            description: `Optimize build time for ${pipeline.repo_name} by caching dependencies`,
+            impact: 'high',
+            effort: 'low',
+            savingsTime: '40% faster builds',
+            repo: pipeline.repo_name,
+            file: '.vela.yml'
+          });
+        }
+        
+        if (minutes > 15) {
+          opts.push({
+            id: `${pipeline.id}-parallel`,
+            type: 'performance',
+            title: 'Parallelize Test Execution',
+            description: `Split test suites for ${pipeline.repo_name} across multiple workers`,
+            impact: 'medium',
+            effort: 'medium',
+            savingsTime: '25% faster tests',
+            savingsCost: '$50/month',
+            repo: pipeline.repo_name,
+            file: '.vela.yml'
+          });
+        }
+      }
+      
+      if (pipeline.status === 'failed') {
+        opts.push({
+          id: `${pipeline.id}-retry`,
+          type: 'reliability',
+          title: 'Add Retry Logic',
+          description: `Improve reliability for ${pipeline.repo_name} with automatic retries`,
+          impact: 'high',
+          effort: 'low',
+          repo: pipeline.repo_name,
+          file: '.vela.yml'
+        });
+      }
+      
+      return opts;
+    }, [])
+    .slice(0, 6); // Limit to 6 optimizations
+
+  // Calculate metrics from pipeline data
+  const successfulPipelines = pipelines.filter(p => p.status === 'success').length;
+  const totalPipelines = pipelines.length;
+  const avgImprovement = totalPipelines > 0 ? Math.min(2.3, 1 + (successfulPipelines / totalPipelines)) : 0;
+  const potentialSavings = optimizations.length * 75; // $75 per optimization
+  const targetSuccessRate = Math.min(95, 80 + (successfulPipelines / Math.max(totalPipelines, 1)) * 15);
 
   const handleApplyOptimization = async (optimizationId: string) => {
     setApplyingOptimization(optimizationId);
@@ -342,7 +359,7 @@ steps:
       if (error) throw error;
 
       setOptimizedConfig(data.result);
-      setShowDiff(true); // Show diff view by default when optimization is complete
+      setShowDiff(true);
       
       toast({
         title: "Configuration Optimized",
@@ -385,6 +402,304 @@ steps:
     });
   };
 
+  if (pipelines.length === 0) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Brain className="w-5 h-5 text-gray-400" />
+              Groq AI Configuration Optimizer
+            </CardTitle>
+            <CardDescription>
+              No pipeline data available. Add demo data to see AI-powered optimization recommendations.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center py-8">
+            <Database className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500 mb-4">No pipelines to optimize</p>
+            <p className="text-sm text-gray-400">Click "Add Demo Data" to see optimization features</p>
+          </CardContent>
+        </Card>
+
+        <Tabs defaultValue="upload" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="upload">Upload & Analyze</TabsTrigger>
+            <TabsTrigger value="examples">Config Examples</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="upload" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Upload className="w-5 h-5 text-blue-600" />
+                  Upload Your .vela.yml File
+                </CardTitle>
+                <CardDescription>
+                  Upload your existing Vela configuration file to get Groq AI-powered analysis and optimization recommendations
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
+                  <input
+                    type="file"
+                    accept=".yml,.yaml"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    id="config-upload"
+                  />
+                  <label htmlFor="config-upload" className="cursor-pointer">
+                    <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-lg font-medium text-gray-900 mb-2">
+                      Click to upload .vela.yml file
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      Or drag and drop your configuration file here
+                    </p>
+                  </label>
+                </div>
+
+                {uploadedConfig && (
+                  <div className="space-y-4">
+                    <Alert>
+                      <FileCheck className="w-4 h-4" />
+                      <AlertDescription>
+                        Configuration file loaded successfully! You can now analyze or optimize it with Groq AI.
+                      </AlertDescription>
+                    </Alert>
+                    
+                    <div className="flex gap-2">
+                      <Button 
+                        onClick={handleAnalyzeConfig}
+                        disabled={analyzingConfig}
+                        className="bg-purple-600 hover:bg-purple-700"
+                      >
+                        {analyzingConfig ? 'Analyzing...' : 'Analyze with Groq AI'}
+                      </Button>
+                      <Button 
+                        onClick={handleOptimizeConfig}
+                        disabled={generatingConfig}
+                        variant="outline"
+                      >
+                        {generatingConfig ? 'Optimizing...' : 'Generate Optimized Version'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {analysisResult && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Brain className="w-5 h-5 text-purple-600" />
+                    Groq AI Analysis Results
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <pre className="whitespace-pre-wrap text-sm text-gray-800">{analysisResult}</pre>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {optimizedConfig && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Brain className="w-5 h-5 text-purple-600" />
+                    Groq AI Optimized Configuration
+                  </CardTitle>
+                  <CardDescription>
+                    Groq AI-generated optimized version of your .vela.yml file
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex gap-2 mb-4">
+                    <Button
+                      size="sm"
+                      variant={showDiff ? "default" : "outline"}
+                      onClick={() => setShowDiff(true)}
+                    >
+                      <GitCompare className="w-3 h-3 mr-1" />
+                      Show Diff
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={!showDiff ? "default" : "outline"}
+                      onClick={() => setShowDiff(false)}
+                    >
+                      <FileText className="w-3 h-3 mr-1" />
+                      Optimized Only
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleCopyConfig(optimizedConfig)}
+                    >
+                      <Copy className="w-3 h-3 mr-1" />
+                      Copy
+                    </Button>
+                    <Button 
+                      size="sm"
+                      variant="outline" 
+                      onClick={() => {
+                        const blob = new Blob([optimizedConfig], { type: 'text/yaml' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = '.vela-optimized.yml';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        
+                        toast({
+                          title: "Config Downloaded",
+                          description: "Optimized .vela.yml file has been downloaded.",
+                        });
+                      }}
+                    >
+                      <Download className="w-3 h-3 mr-1" />
+                      Download
+                    </Button>
+                  </div>
+                  
+                  {showDiff ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <h4 className="font-semibold text-red-700">Original Configuration</h4>
+                          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                            Before
+                          </Badge>
+                        </div>
+                        <div className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto max-h-96 overflow-y-auto">
+                          <pre className="text-sm whitespace-pre-wrap">{uploadedConfig}</pre>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <h4 className="font-semibold text-green-700">Optimized Configuration</h4>
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                            After
+                          </Badge>
+                        </div>
+                        <div className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto max-h-96 overflow-y-auto">
+                          <pre className="text-sm whitespace-pre-wrap">{optimizedConfig}</pre>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
+                      <pre className="text-sm whitespace-pre-wrap">{optimizedConfig}</pre>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {uploadedConfig && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Original Configuration</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Textarea
+                    value={uploadedConfig}
+                    onChange={(e) => setUploadedConfig(e.target.value)}
+                    className="min-h-[300px] font-mono text-sm"
+                    placeholder="Your .vela.yml content will appear here..."
+                  />
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="examples" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-gray-600" />
+                  Before & After: Optimized .vela.yml
+                </CardTitle>
+                <CardDescription>
+                  Example of how VelaBuddy optimizes your pipeline configuration
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Alert>
+                  <AlertTriangle className="w-4 h-4" />
+                  <AlertDescription>
+                    This optimization adds caching, parallel execution, and BuildKit support - reducing build time by ~60%
+                  </AlertDescription>
+                </Alert>
+                
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-semibold text-red-700">❌ Before (Unoptimized)</h4>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleCopyConfig(configExample.before)}
+                      >
+                        <Copy className="w-3 h-3" />
+                      </Button>
+                    </div>
+                    <div className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
+                      <pre className="text-sm whitespace-pre-wrap">{configExample.before}</pre>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-semibold text-green-700">✅ After (Optimized)</h4>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleCopyConfig(configExample.after)}
+                      >
+                        <Copy className="w-3 h-3" />
+                      </Button>
+                    </div>
+                    <div className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
+                      <pre className="text-sm whitespace-pre-wrap">{configExample.after}</pre>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex gap-2">
+                  <Button 
+                    className="bg-green-600 hover:bg-green-700"
+                    onClick={() => handleApplyOptimization('example')}
+                    disabled={applyingOptimization === 'example'}
+                  >
+                    {applyingOptimization === 'example' ? 'Applying...' : 'Apply This Optimization'}
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={handleGenerateCustomConfig}
+                    disabled={generatingConfig}
+                  >
+                    {generatingConfig ? 'Generating...' : 'Generate Custom Config'}
+                  </Button>
+                  <Button variant="outline" onClick={handleDownloadConfig}>
+                    <Download className="w-3 h-3 mr-1" />
+                    Download
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <Card>
@@ -401,17 +716,17 @@ steps:
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div className="text-center p-4 bg-blue-50 rounded-lg">
               <Gauge className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-blue-600">2.3x</div>
+              <div className="text-2xl font-bold text-blue-600">{avgImprovement.toFixed(1)}x</div>
               <p className="text-sm text-blue-700">Avg Speed Improvement</p>
             </div>
             <div className="text-center p-4 bg-green-50 rounded-lg">
               <Clock className="w-8 h-8 text-green-600 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-green-600">$450</div>
+              <div className="text-2xl font-bold text-green-600">${potentialSavings}</div>
               <p className="text-sm text-green-700">Monthly Savings Potential</p>
             </div>
             <div className="text-center p-4 bg-purple-50 rounded-lg">
               <CheckCircle className="w-8 h-8 text-purple-600 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-purple-600">95%</div>
+              <div className="text-2xl font-bold text-purple-600">{targetSuccessRate}%</div>
               <p className="text-sm text-purple-700">Success Rate Target</p>
             </div>
           </div>
@@ -426,67 +741,75 @@ steps:
         </TabsList>
 
         <TabsContent value="recommendations" className="space-y-4">
-          {optimizations.map((opt) => (
-            <Card key={opt.id} className="hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => setSelectedOptimization(opt)}>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-start gap-3">
-                    {getTypeIcon(opt.type)}
-                    <div>
-                      <h4 className="font-semibold text-gray-900">{opt.title}</h4>
-                      <p className="text-sm text-gray-600 mt-1">{opt.description}</p>
+          {optimizations.length > 0 ? (
+            optimizations.map((opt) => (
+              <Card key={opt.id} className="hover:shadow-md transition-shadow cursor-pointer"
+                    onClick={() => setSelectedOptimization(opt)}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-start gap-3">
+                      {getTypeIcon(opt.type)}
+                      <div>
+                        <h4 className="font-semibold text-gray-900">{opt.title}</h4>
+                        <p className="text-sm text-gray-600 mt-1">{opt.description}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Badge variant="outline" className={getImpactColor(opt.impact)}>
+                        {opt.impact} impact
+                      </Badge>
+                      <Badge variant="outline" className={getEffortColor(opt.effort)}>
+                        {opt.effort} effort
+                      </Badge>
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Badge variant="outline" className={getImpactColor(opt.impact)}>
-                      {opt.impact} impact
-                    </Badge>
-                    <Badge variant="outline" className={getEffortColor(opt.effort)}>
-                      {opt.effort} effort
-                    </Badge>
-                  </div>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div className="flex gap-4 text-sm text-gray-600">
-                    <span>📁 {opt.repo}</span>
-                    <span>📄 {opt.file}</span>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="flex gap-4 text-sm text-gray-600">
+                      <span>📁 {opt.repo}</span>
+                      <span>📄 {opt.file}</span>
+                    </div>
+                    
+                    <div className="flex gap-4 text-sm">
+                      {opt.savingsTime && (
+                        <span className="text-blue-600 font-medium">{opt.savingsTime}</span>
+                      )}
+                      {opt.savingsCost && (
+                        <span className="text-green-600 font-medium">{opt.savingsCost}</span>
+                      )}
+                    </div>
                   </div>
                   
-                  <div className="flex gap-4 text-sm">
-                    {opt.savingsTime && (
-                      <span className="text-blue-600 font-medium">{opt.savingsTime}</span>
-                    )}
-                    {opt.savingsCost && (
-                      <span className="text-green-600 font-medium">{opt.savingsCost}</span>
-                    )}
+                  <div className="flex gap-2 mt-3">
+                    <Button 
+                      size="sm" 
+                      className="bg-blue-600 hover:bg-blue-700"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleApplyOptimization(opt.id);
+                      }}
+                      disabled={applyingOptimization === opt.id}
+                    >
+                      {applyingOptimization === opt.id ? 'Applying...' : 'Apply Optimization'}
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      View Details
+                    </Button>
                   </div>
-                </div>
-                
-                <div className="flex gap-2 mt-3">
-                  <Button 
-                    size="sm" 
-                    className="bg-blue-600 hover:bg-blue-700"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleApplyOptimization(opt.id);
-                    }}
-                    disabled={applyingOptimization === opt.id}
-                  >
-                    {applyingOptimization === opt.id ? 'Applying...' : 'Apply Optimization'}
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    View Details
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            ))
+          ) : (
+            <div className="text-center py-8">
+              <Zap className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500">No optimization recommendations available</p>
+              <p className="text-sm text-gray-400 mt-2">Your pipelines are already well optimized!</p>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="upload" className="space-y-6">
