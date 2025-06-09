@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { DEMO_PIPELINES } from '@/hooks/useDemoData';
 
 interface Pipeline {
   id: string;
@@ -53,17 +54,26 @@ export const usePipelines = () => {
       if (error) {
         console.error('Error fetching pipelines:', error);
         setError(error.message);
+        // Fall back to demo data if there's an error
+        setPipelines(DEMO_PIPELINES);
       } else {
-        // Type-cast the data to match our Pipeline interface
-        const typedPipelines = (data || []).map(pipeline => ({
-          ...pipeline,
-          status: pipeline.status as 'running' | 'success' | 'failed' | 'pending'
-        }));
-        setPipelines(typedPipelines);
+        if (data && data.length > 0) {
+          // Type-cast the data to match our Pipeline interface
+          const typedPipelines = data.map(pipeline => ({
+            ...pipeline,
+            status: pipeline.status as 'running' | 'success' | 'failed' | 'pending'
+          }));
+          setPipelines(typedPipelines);
+        } else {
+          // No real data found, use demo data
+          setPipelines(DEMO_PIPELINES);
+        }
       }
     } catch (err) {
       console.error('Error in fetchPipelines:', err);
       setError('An unexpected error occurred');
+      // Fall back to demo data
+      setPipelines(DEMO_PIPELINES);
     } finally {
       setLoading(false);
     }

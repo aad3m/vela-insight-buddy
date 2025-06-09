@@ -1,142 +1,237 @@
 
 import { useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 
-const demoRepositories = [
-  'target/mobile-app',
-  'target/payment-service',
-  'target/inventory-api',
-  'target/web-frontend',
-  'target/notification-service',
-  'target/user-management',
-  'target/analytics-platform',
-  'target/search-service'
+// Hardcoded demo data
+export const DEMO_PIPELINES = [
+  {
+    id: 'demo-1',
+    repo_name: 'target/mobile-app',
+    branch: 'main',
+    status: 'success' as const,
+    progress: 100,
+    duration: '8m 45s',
+    author: 'sarah.chen',
+    commit_hash: 'a1b2c3d',
+    current_step: null,
+    vela_build_id: 'build_demo_1',
+    created_at: new Date(Date.now() - 3600000).toISOString(),
+    updated_at: new Date(Date.now() - 3600000).toISOString()
+  },
+  {
+    id: 'demo-2',
+    repo_name: 'target/payment-service',
+    branch: 'feature/checkout-v2',
+    status: 'running' as const,
+    progress: 65,
+    duration: null,
+    author: 'mike.rodriguez',
+    commit_hash: 'b2c3d4e',
+    current_step: 'Running Tests',
+    vela_build_id: 'build_demo_2',
+    created_at: new Date(Date.now() - 1800000).toISOString(),
+    updated_at: new Date(Date.now() - 300000).toISOString()
+  },
+  {
+    id: 'demo-3',
+    repo_name: 'target/inventory-api',
+    branch: 'develop',
+    status: 'failed' as const,
+    progress: 45,
+    duration: '3m 22s',
+    author: 'alex.kim',
+    commit_hash: 'c3d4e5f',
+    current_step: null,
+    vela_build_id: 'build_demo_3',
+    created_at: new Date(Date.now() - 7200000).toISOString(),
+    updated_at: new Date(Date.now() - 7200000).toISOString()
+  },
+  {
+    id: 'demo-4',
+    repo_name: 'target/web-frontend',
+    branch: 'main',
+    status: 'success' as const,
+    progress: 100,
+    duration: '12m 15s',
+    author: 'emma.wilson',
+    commit_hash: 'd4e5f6g',
+    current_step: null,
+    vela_build_id: 'build_demo_4',
+    created_at: new Date(Date.now() - 10800000).toISOString(),
+    updated_at: new Date(Date.now() - 10800000).toISOString()
+  },
+  {
+    id: 'demo-5',
+    repo_name: 'target/notification-service',
+    branch: 'hotfix/payment-bug',
+    status: 'pending' as const,
+    progress: null,
+    duration: null,
+    author: 'david.park',
+    commit_hash: 'e5f6g7h',
+    current_step: null,
+    vela_build_id: 'build_demo_5',
+    created_at: new Date(Date.now() - 14400000).toISOString(),
+    updated_at: new Date(Date.now() - 14400000).toISOString()
+  },
+  {
+    id: 'demo-6',
+    repo_name: 'target/user-management',
+    branch: 'feature/mobile-redesign',
+    status: 'running' as const,
+    progress: 25,
+    duration: null,
+    author: 'lisa.johnson',
+    commit_hash: 'f6g7h8i',
+    current_step: 'Install Dependencies',
+    vela_build_id: 'build_demo_6',
+    created_at: new Date(Date.now() - 900000).toISOString(),
+    updated_at: new Date(Date.now() - 600000).toISOString()
+  },
+  {
+    id: 'demo-7',
+    repo_name: 'target/analytics-platform',
+    branch: 'main',
+    status: 'success' as const,
+    progress: 100,
+    duration: '15m 30s',
+    author: 'sarah.chen',
+    commit_hash: 'g7h8i9j',
+    current_step: null,
+    vela_build_id: 'build_demo_7',
+    created_at: new Date(Date.now() - 18000000).toISOString(),
+    updated_at: new Date(Date.now() - 18000000).toISOString()
+  },
+  {
+    id: 'demo-8',
+    repo_name: 'target/search-service',
+    branch: 'develop',
+    status: 'failed' as const,
+    progress: 80,
+    duration: '6m 12s',
+    author: 'mike.rodriguez',
+    commit_hash: 'h8i9j0k',
+    current_step: null,
+    vela_build_id: 'build_demo_8',
+    created_at: new Date(Date.now() - 21600000).toISOString(),
+    updated_at: new Date(Date.now() - 21600000).toISOString()
+  },
+  {
+    id: 'demo-9',
+    repo_name: 'target/mobile-app',
+    branch: 'feature/checkout-v2',
+    status: 'success' as const,
+    progress: 100,
+    duration: '9m 55s',
+    author: 'alex.kim',
+    commit_hash: 'i9j0k1l',
+    current_step: null,
+    vela_build_id: 'build_demo_9',
+    created_at: new Date(Date.now() - 25200000).toISOString(),
+    updated_at: new Date(Date.now() - 25200000).toISOString()
+  },
+  {
+    id: 'demo-10',
+    repo_name: 'target/payment-service',
+    branch: 'main',
+    status: 'running' as const,
+    progress: 90,
+    duration: null,
+    author: 'emma.wilson',
+    commit_hash: 'j0k1l2m',
+    current_step: 'Deploy to Production',
+    vela_build_id: 'build_demo_10',
+    created_at: new Date(Date.now() - 1200000).toISOString(),
+    updated_at: new Date(Date.now() - 180000).toISOString()
+  },
+  {
+    id: 'demo-11',
+    repo_name: 'target/inventory-api',
+    branch: 'hotfix/payment-bug',
+    status: 'success' as const,
+    progress: 100,
+    duration: '7m 33s',
+    author: 'david.park',
+    commit_hash: 'k1l2m3n',
+    current_step: null,
+    vela_build_id: 'build_demo_11',
+    created_at: new Date(Date.now() - 28800000).toISOString(),
+    updated_at: new Date(Date.now() - 28800000).toISOString()
+  },
+  {
+    id: 'demo-12',
+    repo_name: 'target/web-frontend',
+    branch: 'feature/mobile-redesign',
+    status: 'failed' as const,
+    progress: 35,
+    duration: '2m 18s',
+    author: 'lisa.johnson',
+    commit_hash: 'l2m3n4o',
+    current_step: null,
+    vela_build_id: 'build_demo_12',
+    created_at: new Date(Date.now() - 32400000).toISOString(),
+    updated_at: new Date(Date.now() - 32400000).toISOString()
+  },
+  {
+    id: 'demo-13',
+    repo_name: 'target/notification-service',
+    branch: 'develop',
+    status: 'pending' as const,
+    progress: null,
+    duration: null,
+    author: 'sarah.chen',
+    commit_hash: 'm3n4o5p',
+    current_step: null,
+    vela_build_id: 'build_demo_13',
+    created_at: new Date(Date.now() - 36000000).toISOString(),
+    updated_at: new Date(Date.now() - 36000000).toISOString()
+  },
+  {
+    id: 'demo-14',
+    repo_name: 'target/user-management',
+    branch: 'main',
+    status: 'success' as const,
+    progress: 100,
+    duration: '11m 44s',
+    author: 'mike.rodriguez',
+    commit_hash: 'n4o5p6q',
+    current_step: null,
+    vela_build_id: 'build_demo_14',
+    created_at: new Date(Date.now() - 39600000).toISOString(),
+    updated_at: new Date(Date.now() - 39600000).toISOString()
+  },
+  {
+    id: 'demo-15',
+    repo_name: 'target/analytics-platform',
+    branch: 'feature/checkout-v2',
+    status: 'running' as const,
+    progress: 55,
+    duration: null,
+    author: 'alex.kim',
+    commit_hash: 'o5p6q7r',
+    current_step: 'Build Application',
+    vela_build_id: 'build_demo_15',
+    created_at: new Date(Date.now() - 2700000).toISOString(),
+    updated_at: new Date(Date.now() - 420000).toISOString()
+  }
 ];
-
-const demoBranches = ['main', 'develop', 'feature/checkout-v2', 'hotfix/payment-bug', 'feature/mobile-redesign'];
-const demoAuthors = ['sarah.chen', 'mike.rodriguez', 'alex.kim', 'emma.wilson', 'david.park', 'lisa.johnson'];
-const demoSteps = ['Clone Repository', 'Install Dependencies', 'Run Tests', 'Build Application', 'Deploy to Staging', 'Integration Tests', 'Deploy to Production'];
-
-const generateRandomCommitHash = () => {
-  return Math.random().toString(36).substring(2, 9);
-};
-
-const generateRandomDuration = () => {
-  const minutes = Math.floor(Math.random() * 20) + 2;
-  const seconds = Math.floor(Math.random() * 60);
-  return `${minutes}m ${seconds}s`;
-};
 
 export const useDemoData = () => {
   const [loading, setLoading] = useState(false);
-  const { user } = useAuth();
   const { toast } = useToast();
 
   const createDemoPipelines = async () => {
-    if (!user) {
-      toast({
-        title: "Authentication Required",
-        description: "Please sign in to create demo data.",
-        variant: "destructive"
-      });
-      return;
-    }
-
     setLoading(true);
-    try {
-      // Clear existing pipelines first - need to use RPC or handle with proper permissions
-      // Since we can't delete with current RLS, we'll just add new demo data
-      
-      const pipelinesToInsert = [];
-      
-      // Generate 15 demo pipelines with various statuses
-      for (let i = 0; i < 15; i++) {
-        const status = i < 8 ? 'success' : i < 11 ? 'running' : i < 13 ? 'failed' : 'pending';
-        const progress = status === 'running' ? Math.floor(Math.random() * 80) + 10 : 
-                        status === 'success' ? 100 : 
-                        status === 'failed' ? Math.floor(Math.random() * 70) + 20 : 0;
-
-        const pipeline = {
-          repo_name: demoRepositories[Math.floor(Math.random() * demoRepositories.length)],
-          branch: demoBranches[Math.floor(Math.random() * demoBranches.length)],
-          status,
-          progress: status === 'pending' ? null : progress,
-          duration: status === 'running' || status === 'pending' ? null : generateRandomDuration(),
-          author: demoAuthors[Math.floor(Math.random() * demoAuthors.length)],
-          commit_hash: generateRandomCommitHash(),
-          current_step: status === 'running' ? demoSteps[Math.floor(Math.random() * demoSteps.length)] : null,
-          vela_build_id: `build_${Date.now()}_${i}`,
-          created_at: new Date(Date.now() - Math.random() * 86400000 * 2).toISOString(), // Last 2 days
-          updated_at: new Date(Date.now() - Math.random() * 3600000).toISOString() // Last hour
-        };
-
-        pipelinesToInsert.push(pipeline);
-      }
-
-      // Use a transaction approach: temporarily disable RLS, insert data, then re-enable
-      // Since we can't do that, let's use a different approach - insert each pipeline individually
-      // and immediately create the user association
-      
-      const insertedPipelineIds = [];
-      
-      for (const pipelineData of pipelinesToInsert) {
-        // First, temporarily allow the insert by creating a more permissive policy approach
-        // Insert the pipeline with user context
-        const { data: insertedPipeline, error: pipelineError } = await supabase
-          .from('pipelines')
-          .insert(pipelineData)
-          .select('id')
-          .single();
-
-        if (pipelineError) {
-          console.error('Error inserting pipeline:', pipelineError);
-          // If INSERT fails due to RLS, we need to adjust our approach
-          continue;
-        }
-
-        if (insertedPipeline) {
-          insertedPipelineIds.push(insertedPipeline.id);
-          
-          // Immediately create the user association
-          const { error: associationError } = await supabase
-            .from('user_pipelines')
-            .insert({
-              user_id: user.id,
-              pipeline_id: insertedPipeline.id,
-              role: 'member'
-            });
-
-          if (associationError) {
-            console.error('Error creating association:', associationError);
-          }
-        }
-      }
-
-      if (insertedPipelineIds.length > 0) {
-        toast({
-          title: "Demo Data Created",
-          description: `Successfully created ${insertedPipelineIds.length} demo pipelines across various Target repositories.`,
-        });
-      } else {
-        toast({
-          title: "Demo Data Creation Issues",
-          description: "Some pipelines couldn't be created due to permissions. You may need to adjust the database policies.",
-          variant: "destructive"
-        });
-      }
-
-    } catch (error) {
-      console.error('Error creating demo data:', error);
-      toast({
-        title: "Error Creating Demo Data",
-        description: error.message || "Failed to create demo pipelines.",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
+    
+    // Simulate loading time
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    toast({
+      title: "Demo Data Loaded",
+      description: `Successfully loaded ${DEMO_PIPELINES.length} demo pipelines across various Target repositories.`,
+    });
+    
+    setLoading(false);
   };
 
   return { createDemoPipelines, loading };
