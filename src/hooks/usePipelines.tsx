@@ -54,7 +54,12 @@ export const usePipelines = () => {
         console.error('Error fetching pipelines:', error);
         setError(error.message);
       } else {
-        setPipelines(data || []);
+        // Type-cast the data to match our Pipeline interface
+        const typedPipelines = (data || []).map(pipeline => ({
+          ...pipeline,
+          status: pipeline.status as 'running' | 'success' | 'failed' | 'pending'
+        }));
+        setPipelines(typedPipelines);
       }
     } catch (err) {
       console.error('Error in fetchPipelines:', err);
