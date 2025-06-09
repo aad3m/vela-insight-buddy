@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -5,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { AlertCircle, CheckCircle, Clock, Zap, TrendingUp, Users, GitBranch, Settings, LogOut, User, Brain } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, Zap, TrendingUp, Users, GitBranch, Settings, LogOut, User, Brain, Database } from 'lucide-react';
 import { PipelineStatus } from '@/components/PipelineStatus';
 import { FailureAnalysis } from '@/components/FailureAnalysis';
 import { TeamMetrics } from '@/components/TeamMetrics';
@@ -14,11 +15,13 @@ import { SlackIntegration } from '@/components/SlackIntegration';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { EnhancedFailureAnalysis } from '@/components/EnhancedFailureAnalysis';
+import { useDemoData } from '@/hooks/useDemoData';
 
 const Index = () => {
   const { user, signOut, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { createDemoPipelines, loading: demoLoading } = useDemoData();
   const [activePipelines, setActivePipelines] = useState(12);
   const [failedPipelines, setFailedPipelines] = useState(3);
   const [successRate, setSuccessRate] = useState(94);
@@ -64,6 +67,10 @@ const Index = () => {
       title: "Settings",
       description: "Settings panel coming soon! This will include Vela API configuration, notification preferences, and more.",
     });
+  };
+
+  const handleCreateDemoData = async () => {
+    await createDemoPipelines();
   };
 
   // Simulate real-time updates
@@ -116,6 +123,15 @@ const Index = () => {
                 <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
                 Connected to Vela
               </Badge>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleCreateDemoData}
+                disabled={demoLoading}
+              >
+                <Database className="w-4 h-4 mr-2" />
+                {demoLoading ? 'Creating...' : 'Add Demo Data'}
+              </Button>
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg">
                   <User className="w-4 h-4 text-gray-600" />
