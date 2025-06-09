@@ -1,11 +1,11 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Zap, FileText, CheckCircle, AlertTriangle, Clock, Gauge } from 'lucide-react';
+import { Zap, FileText, CheckCircle, AlertTriangle, Clock, Gauge, Copy, Download } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface Optimization {
   id: string;
@@ -160,6 +160,77 @@ const getEffortColor = (effort: string) => {
 
 export const ConfigOptimizer = () => {
   const [selectedOptimization, setSelectedOptimization] = useState<Optimization | null>(null);
+  const [applyingOptimization, setApplyingOptimization] = useState<string | null>(null);
+  const [generatingConfig, setGeneratingConfig] = useState(false);
+  const { toast } = useToast();
+
+  const handleApplyOptimization = async (optimizationId: string) => {
+    setApplyingOptimization(optimizationId);
+    try {
+      // Simulate applying optimization
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      const optimization = optimizations.find(opt => opt.id === optimizationId);
+      toast({
+        title: "Optimization Applied",
+        description: `${optimization?.title} has been applied to ${optimization?.repo}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to apply optimization. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setApplyingOptimization(null);
+    }
+  };
+
+  const handleGenerateCustomConfig = async () => {
+    setGeneratingConfig(true);
+    try {
+      // Simulate AI config generation
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      toast({
+        title: "Custom Config Generated",
+        description: "AI-optimized .vela.yml configuration has been generated based on your repository patterns.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate config. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setGeneratingConfig(false);
+    }
+  };
+
+  const handleCopyConfig = (config: string) => {
+    navigator.clipboard.writeText(config);
+    toast({
+      title: "Copied to Clipboard",
+      description: "Configuration copied to clipboard.",
+    });
+  };
+
+  const handleDownloadConfig = () => {
+    const blob = new Blob([configExample.after], { type: 'text/yaml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = '.vela.yml';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    toast({
+      title: "Config Downloaded",
+      description: "Optimized .vela.yml file has been downloaded.",
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -239,6 +310,27 @@ export const ConfigOptimizer = () => {
                       )}
                     </div>
                   </div>
+                  
+                  <div className="flex gap-2 mt-3">
+                    <Button 
+                      size="sm" 
+                      className="bg-blue-600 hover:bg-blue-700"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleApplyOptimization(opt.id);
+                      }}
+                      disabled={applyingOptimization === opt.id}
+                    >
+                      {applyingOptimization === opt.id ? 'Applying...' : 'Apply Optimization'}
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      View Details
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -266,14 +358,32 @@ export const ConfigOptimizer = () => {
               
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div>
-                  <h4 className="font-semibold text-red-700 mb-2">❌ Before (Unoptimized)</h4>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-semibold text-red-700">❌ Before (Unoptimized)</h4>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleCopyConfig(configExample.before)}
+                    >
+                      <Copy className="w-3 h-3" />
+                    </Button>
+                  </div>
                   <div className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
                     <pre className="text-sm whitespace-pre-wrap">{configExample.before}</pre>
                   </div>
                 </div>
                 
                 <div>
-                  <h4 className="font-semibold text-green-700 mb-2">✅ After (Optimized)</h4>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-semibold text-green-700">✅ After (Optimized)</h4>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleCopyConfig(configExample.after)}
+                    >
+                      <Copy className="w-3 h-3" />
+                    </Button>
+                  </div>
                   <div className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
                     <pre className="text-sm whitespace-pre-wrap">{configExample.after}</pre>
                   </div>
@@ -281,11 +391,23 @@ export const ConfigOptimizer = () => {
               </div>
               
               <div className="flex gap-2">
-                <Button className="bg-green-600 hover:bg-green-700">
-                  Apply This Optimization
+                <Button 
+                  className="bg-green-600 hover:bg-green-700"
+                  onClick={() => handleApplyOptimization('example')}
+                  disabled={applyingOptimization === 'example'}
+                >
+                  {applyingOptimization === 'example' ? 'Applying...' : 'Apply This Optimization'}
                 </Button>
-                <Button variant="outline">
-                  Generate Custom Config
+                <Button 
+                  variant="outline"
+                  onClick={handleGenerateCustomConfig}
+                  disabled={generatingConfig}
+                >
+                  {generatingConfig ? 'Generating...' : 'Generate Custom Config'}
+                </Button>
+                <Button variant="outline" onClick={handleDownloadConfig}>
+                  <Download className="w-3 h-3 mr-1" />
+                  Download
                 </Button>
               </div>
             </CardContent>

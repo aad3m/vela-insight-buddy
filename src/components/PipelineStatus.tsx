@@ -4,8 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { AlertCircle, CheckCircle, Clock, Play, GitBranch, User, Loader2 } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, Play, GitBranch, User, Loader2, ExternalLink, RotateCcw } from 'lucide-react';
 import { usePipelines } from '@/hooks/usePipelines';
+import { useToast } from '@/hooks/use-toast';
 
 const getStatusIcon = (status: string) => {
   switch (status) {
@@ -38,7 +39,52 @@ const getStatusBadge = (status: string) => {
 };
 
 export const PipelineStatus = () => {
-  const { pipelines, loading, error } = usePipelines();
+  const { pipelines, loading, error, refetch } = usePipelines();
+  const { toast } = useToast();
+
+  const handleViewLogs = (pipelineId: string, buildId?: string) => {
+    toast({
+      title: "Opening Logs",
+      description: `Redirecting to Vela build logs for build ${buildId || pipelineId.slice(0, 8)}...`,
+    });
+    // In a real implementation, this would open the Vela logs URL
+  };
+
+  const handleApprove = async (pipelineId: string) => {
+    try {
+      // Simulate approval process
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      toast({
+        title: "Pipeline Approved",
+        description: "Pipeline has been approved and will continue execution.",
+      });
+      
+      // Refresh the pipelines list
+      refetch();
+    } catch (error) {
+      toast({
+        title: "Approval Failed",
+        description: "Failed to approve pipeline. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleViewDetails = (pipelineId: string) => {
+    toast({
+      title: "Opening Details",
+      description: `Loading detailed view for pipeline ${pipelineId.slice(0, 8)}...`,
+    });
+  };
+
+  const handleRefresh = () => {
+    refetch();
+    toast({
+      title: "Refreshing",
+      description: "Fetching latest pipeline data...",
+    });
+  };
 
   if (loading) {
     return (
@@ -71,7 +117,11 @@ export const PipelineStatus = () => {
         <CardContent className="flex items-center justify-center py-8">
           <div className="text-center">
             <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-2" />
-            <p className="text-red-600">Error loading pipelines: {error}</p>
+            <p className="text-red-600 mb-4">Error loading pipelines: {error}</p>
+            <Button onClick={handleRefresh} variant="outline">
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Retry
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -82,13 +132,21 @@ export const PipelineStatus = () => {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <GitBranch className="w-5 h-5 text-blue-600" />
-            Active Pipeline Runs
-          </CardTitle>
-          <CardDescription>
-            Real-time status of your Vela pipeline executions across Target repositories
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <GitBranch className="w-5 h-5 text-blue-600" />
+                Active Pipeline Runs
+              </CardTitle>
+              <CardDescription>
+                Real-time status of your Vela pipeline executions across Target repositories
+              </CardDescription>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleRefresh}>
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Refresh
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {pipelines.length === 0 ? (
@@ -142,16 +200,31 @@ export const PipelineStatus = () => {
                     
                     <div className="flex gap-2">
                       {pipeline.status === 'failed' && (
-                        <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="text-red-600 border-red-200 hover:bg-red-50"
+                          onClick={() => handleViewLogs(pipeline.id, pipeline.vela_build_id)}
+                        >
+                          <ExternalLink className="w-3 h-3 mr-1" />
                           View Logs
                         </Button>
                       )}
                       {pipeline.status === 'pending' && (
-                        <Button size="sm" variant="outline" className="text-blue-600 border-blue-200 hover:bg-blue-50">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                          onClick={() => handleApprove(pipeline.id)}
+                        >
                           Approve
                         </Button>
                       )}
-                      <Button size="sm" variant="ghost">
+                      <Button 
+                        size="sm" 
+                        variant="ghost"
+                        onClick={() => handleViewDetails(pipeline.id)}
+                      >
                         Details
                       </Button>
                     </div>

@@ -1,10 +1,11 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Brain, AlertTriangle, Lightbulb, TrendingUp, Code, Clock } from 'lucide-react';
+import { Brain, AlertTriangle, Lightbulb, TrendingUp, Code, Clock, ExternalLink, Copy } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface FailurePattern {
   id: string;
@@ -73,6 +74,74 @@ const getSeverityColor = (severity: string) => {
 };
 
 export const FailureAnalysis = () => {
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [selectedPattern, setSelectedPattern] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  const handleApplyFix = async () => {
+    setIsAnalyzing(true);
+    try {
+      // Simulate AI processing
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      toast({
+        title: "Fix Applied Successfully",
+        description: "Memory allocation has been increased to 4GB in the pipeline configuration.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to apply the fix. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleViewLogs = () => {
+    toast({
+      title: "Opening Logs",
+      description: "Redirecting to Vela build logs...",
+    });
+  };
+
+  const handleNotifyTeam = () => {
+    toast({
+      title: "Team Notified",
+      description: "Slack notification sent to #backend-team channel.",
+    });
+  };
+
+  const handleCreateFixPR = async (patternId: string) => {
+    setSelectedPattern(patternId);
+    try {
+      // Simulate PR creation
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      toast({
+        title: "Fix PR Created",
+        description: "Pull request #1234 created with the suggested fix.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create PR. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setSelectedPattern(null);
+    }
+  };
+
+  const handleCopyFix = (suggestion: string) => {
+    navigator.clipboard.writeText(suggestion);
+    toast({
+      title: "Copied to Clipboard",
+      description: "Fix suggestion copied to clipboard.",
+    });
+  };
+
   return (
     <div className="space-y-6">
       {/* AI-Powered Recent Failure Analysis */}
@@ -112,21 +181,35 @@ export const FailureAnalysis = () => {
             <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
               <div className="flex items-start gap-2">
                 <Lightbulb className="w-4 h-4 text-green-600 mt-0.5" />
-                <div>
+                <div className="flex-1">
                   <p className="text-sm font-medium text-green-800">Suggested Fix:</p>
                   <p className="text-sm text-green-700">{recentFailure.suggestedFix}</p>
                 </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleCopyFix(recentFailure.suggestedFix)}
+                  className="text-green-700 hover:text-green-800"
+                >
+                  <Copy className="w-3 h-3" />
+                </Button>
               </div>
             </div>
             
             <div className="flex gap-2 mt-4">
-              <Button size="sm" className="bg-green-600 hover:bg-green-700">
-                Apply Fix
+              <Button 
+                size="sm" 
+                className="bg-green-600 hover:bg-green-700"
+                onClick={handleApplyFix}
+                disabled={isAnalyzing}
+              >
+                {isAnalyzing ? 'Applying...' : 'Apply Fix'}
               </Button>
-              <Button size="sm" variant="outline">
+              <Button size="sm" variant="outline" onClick={handleViewLogs}>
+                <ExternalLink className="w-3 h-3 mr-1" />
                 View Full Logs
               </Button>
-              <Button size="sm" variant="ghost">
+              <Button size="sm" variant="ghost" onClick={handleNotifyTeam}>
                 Notify Team
               </Button>
             </div>
@@ -178,18 +261,31 @@ export const FailureAnalysis = () => {
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                   <div className="flex items-start gap-2">
                     <Code className="w-4 h-4 text-blue-600 mt-0.5" />
-                    <div>
+                    <div className="flex-1">
                       <p className="text-sm font-medium text-blue-800">Recommendation:</p>
                       <p className="text-sm text-blue-700">{failure.suggestion}</p>
                     </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleCopyFix(failure.suggestion)}
+                      className="text-blue-700 hover:text-blue-800"
+                    >
+                      <Copy className="w-3 h-3" />
+                    </Button>
                   </div>
                 </div>
                 
                 <div className="flex gap-2 mt-3">
-                  <Button size="sm" variant="outline">
-                    Create Fix PR
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => handleCreateFixPR(failure.id)}
+                    disabled={selectedPattern === failure.id}
+                  >
+                    {selectedPattern === failure.id ? 'Creating...' : 'Create Fix PR'}
                   </Button>
-                  <Button size="sm" variant="ghost">
+                  <Button size="sm" variant="ghost" onClick={handleViewLogs}>
                     View Details
                   </Button>
                 </div>

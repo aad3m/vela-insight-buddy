@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,6 +21,7 @@ const Index = () => {
   const [activePipelines, setActivePipelines] = useState(12);
   const [failedPipelines, setFailedPipelines] = useState(3);
   const [successRate, setSuccessRate] = useState(94);
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   // Redirect to auth if not authenticated
   useEffect(() => {
@@ -31,6 +31,7 @@ const Index = () => {
   }, [user, loading, navigate]);
 
   const handleSignOut = async () => {
+    setIsSigningOut(true);
     try {
       const { error } = await signOut();
       if (error) {
@@ -52,7 +53,16 @@ const Index = () => {
         description: "An unexpected error occurred",
         variant: "destructive"
       });
+    } finally {
+      setIsSigningOut(false);
     }
+  };
+
+  const handleSettings = () => {
+    toast({
+      title: "Settings",
+      description: "Settings panel coming soon! This will include Vela API configuration, notification preferences, and more.",
+    });
   };
 
   // Simulate real-time updates
@@ -110,13 +120,18 @@ const Index = () => {
                   <User className="w-4 h-4 text-gray-600" />
                   <span className="text-sm text-gray-700">{user.email}</span>
                 </div>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={handleSettings}>
                   <Settings className="w-4 h-4 mr-2" />
                   Settings
                 </Button>
-                <Button variant="outline" size="sm" onClick={handleSignOut}>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleSignOut}
+                  disabled={isSigningOut}
+                >
                   <LogOut className="w-4 h-4 mr-2" />
-                  Sign Out
+                  {isSigningOut ? 'Signing Out...' : 'Sign Out'}
                 </Button>
               </div>
             </div>
