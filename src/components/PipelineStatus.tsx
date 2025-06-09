@@ -4,77 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { AlertCircle, CheckCircle, Clock, Play, GitBranch, User } from 'lucide-react';
-
-interface Pipeline {
-  id: string;
-  repo: string;
-  branch: string;
-  status: 'running' | 'success' | 'failed' | 'pending';
-  progress: number;
-  duration: string;
-  author: string;
-  commit: string;
-  step: string;
-}
-
-const mockPipelines: Pipeline[] = [
-  {
-    id: '1',
-    repo: 'target-web-frontend',
-    branch: 'feature/checkout-improvements',
-    status: 'running',
-    progress: 75,
-    duration: '4m 32s',
-    author: 'sarah.chen',
-    commit: 'a1b2c3d',
-    step: 'Deploy to staging'
-  },
-  {
-    id: '2',
-    repo: 'inventory-service',
-    branch: 'hotfix/stock-calculation',
-    status: 'failed',
-    progress: 45,
-    duration: '2m 18s',
-    author: 'mike.rodriguez',
-    commit: 'x7y8z9a',
-    step: 'Unit tests'
-  },
-  {
-    id: '3',
-    repo: 'mobile-app-api',
-    branch: 'main',
-    status: 'success',
-    progress: 100,
-    duration: '6m 45s',
-    author: 'alex.kim',
-    commit: 'p4q5r6s',
-    step: 'Production deploy'
-  },
-  {
-    id: '4',
-    repo: 'pricing-engine',
-    branch: 'feature/dynamic-pricing',
-    status: 'running',
-    progress: 30,
-    duration: '1m 52s',
-    author: 'emma.wilson',
-    commit: 'f8g9h0i',
-    step: 'Integration tests'
-  },
-  {
-    id: '5',
-    repo: 'user-authentication',
-    branch: 'security/oauth-update',
-    status: 'pending',
-    progress: 0,
-    duration: '0s',
-    author: 'david.patel',
-    commit: 'j1k2l3m',
-    step: 'Waiting for approval'
-  }
-];
+import { AlertCircle, CheckCircle, Clock, Play, GitBranch, User, Loader2 } from 'lucide-react';
+import { usePipelines } from '@/hooks/usePipelines';
 
 const getStatusIcon = (status: string) => {
   switch (status) {
@@ -107,6 +38,46 @@ const getStatusBadge = (status: string) => {
 };
 
 export const PipelineStatus = () => {
+  const { pipelines, loading, error } = usePipelines();
+
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <GitBranch className="w-5 h-5 text-blue-600" />
+            Active Pipeline Runs
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center py-8">
+          <div className="flex items-center gap-2 text-gray-600">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Loading pipelines...
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <GitBranch className="w-5 h-5 text-blue-600" />
+            Active Pipeline Runs
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center py-8">
+          <div className="text-center">
+            <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-2" />
+            <p className="text-red-600">Error loading pipelines: {error}</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <Card>
@@ -116,65 +87,79 @@ export const PipelineStatus = () => {
             Active Pipeline Runs
           </CardTitle>
           <CardDescription>
-            Real-time status of all Vela pipeline executions across Target repositories
+            Real-time status of your Vela pipeline executions across Target repositories
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {mockPipelines.map((pipeline) => (
-              <div key={pipeline.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    {getStatusIcon(pipeline.status)}
-                    <div>
-                      <h4 className="font-semibold text-gray-900">{pipeline.repo}</h4>
-                      <p className="text-sm text-gray-600">{pipeline.branch}</p>
+          {pipelines.length === 0 ? (
+            <div className="text-center py-8">
+              <GitBranch className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No pipelines found</h3>
+              <p className="text-gray-600">
+                You don't have access to any pipeline runs yet. Contact your team lead to get added to relevant repositories.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {pipelines.map((pipeline) => (
+                <div key={pipeline.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      {getStatusIcon(pipeline.status)}
+                      <div>
+                        <h4 className="font-semibold text-gray-900">{pipeline.repo_name}</h4>
+                        <p className="text-sm text-gray-600">{pipeline.branch}</p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {getStatusBadge(pipeline.status)}
-                    <span className="text-sm text-gray-500">{pipeline.duration}</span>
-                  </div>
-                </div>
-                
-                {pipeline.status === 'running' && (
-                  <div className="mb-3">
-                    <div className="flex justify-between text-sm text-gray-600 mb-1">
-                      <span>Current step: {pipeline.step}</span>
-                      <span>{pipeline.progress}%</span>
+                    <div className="flex items-center gap-3">
+                      {getStatusBadge(pipeline.status)}
+                      <span className="text-sm text-gray-500">
+                        {pipeline.duration || '0s'}
+                      </span>
                     </div>
-                    <Progress value={pipeline.progress} className="h-2" />
-                  </div>
-                )}
-                
-                <div className="flex items-center justify-between text-sm text-gray-500">
-                  <div className="flex items-center gap-4">
-                    <span className="flex items-center gap-1">
-                      <User className="w-3 h-3" />
-                      {pipeline.author}
-                    </span>
-                    <span>#{pipeline.commit}</span>
                   </div>
                   
-                  <div className="flex gap-2">
-                    {pipeline.status === 'failed' && (
-                      <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50">
-                        View Logs
+                  {pipeline.status === 'running' && pipeline.progress !== null && (
+                    <div className="mb-3">
+                      <div className="flex justify-between text-sm text-gray-600 mb-1">
+                        <span>Current step: {pipeline.current_step || 'Running...'}</span>
+                        <span>{pipeline.progress}%</span>
+                      </div>
+                      <Progress value={pipeline.progress} className="h-2" />
+                    </div>
+                  )}
+                  
+                  <div className="flex items-center justify-between text-sm text-gray-500">
+                    <div className="flex items-center gap-4">
+                      <span className="flex items-center gap-1">
+                        <User className="w-3 h-3" />
+                        {pipeline.author || 'Unknown'}
+                      </span>
+                      {pipeline.commit_hash && (
+                        <span>#{pipeline.commit_hash.substring(0, 7)}</span>
+                      )}
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      {pipeline.status === 'failed' && (
+                        <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50">
+                          View Logs
+                        </Button>
+                      )}
+                      {pipeline.status === 'pending' && (
+                        <Button size="sm" variant="outline" className="text-blue-600 border-blue-200 hover:bg-blue-50">
+                          Approve
+                        </Button>
+                      )}
+                      <Button size="sm" variant="ghost">
+                        Details
                       </Button>
-                    )}
-                    {pipeline.status === 'pending' && (
-                      <Button size="sm" variant="outline" className="text-blue-600 border-blue-200 hover:bg-blue-50">
-                        Approve
-                      </Button>
-                    )}
-                    <Button size="sm" variant="ghost">
-                      Details
-                    </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

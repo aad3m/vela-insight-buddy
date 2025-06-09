@@ -9,6 +9,51 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      pipelines: {
+        Row: {
+          author: string | null
+          branch: string
+          commit_hash: string | null
+          created_at: string
+          current_step: string | null
+          duration: string | null
+          id: string
+          progress: number | null
+          repo_name: string
+          status: string
+          updated_at: string
+          vela_build_id: string | null
+        }
+        Insert: {
+          author?: string | null
+          branch: string
+          commit_hash?: string | null
+          created_at?: string
+          current_step?: string | null
+          duration?: string | null
+          id?: string
+          progress?: number | null
+          repo_name: string
+          status: string
+          updated_at?: string
+          vela_build_id?: string | null
+        }
+        Update: {
+          author?: string | null
+          branch?: string
+          commit_hash?: string | null
+          created_at?: string
+          current_step?: string | null
+          duration?: string | null
+          id?: string
+          progress?: number | null
+          repo_name?: string
+          status?: string
+          updated_at?: string
+          vela_build_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -44,6 +89,38 @@ export type Database = {
           username?: string | null
         }
         Relationships: []
+      }
+      user_pipelines: {
+        Row: {
+          created_at: string
+          id: string
+          pipeline_id: string
+          role: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          pipeline_id: string
+          role?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          pipeline_id?: string
+          role?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_pipelines_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "pipelines"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
