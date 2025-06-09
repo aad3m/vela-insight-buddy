@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -6,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Brain, AlertTriangle, Lightbulb, TrendingUp, Code, Clock, ExternalLink, Copy } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface FailurePattern {
   id: string;
@@ -76,7 +76,49 @@ const getSeverityColor = (severity: string) => {
 export const FailureAnalysis = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [selectedPattern, setSelectedPattern] = useState<string | null>(null);
+  const [aiAnalysis, setAiAnalysis] = useState<string>(recentFailure.aiAnalysis);
+  const [suggestedFix, setSuggestedFix] = useState<string>(recentFailure.suggestedFix);
   const { toast } = useToast();
+
+  const handleAnalyzeFailure = async () => {
+    setIsAnalyzing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-failure-logs', {
+        body: {
+          logs: recentFailure.logSnippet,
+          error: recentFailure.error,
+          repo: recentFailure.repo,
+          step: recentFailure.step
+        }
+      });
+
+      if (error) throw error;
+
+      // Parse the AI response to extract analysis and fix
+      const analysis = data.analysis;
+      setAiAnalysis(analysis);
+      
+      // Extract suggested fix from the analysis (this is a simple approach)
+      const fixMatch = analysis.match(/fix|solution|recommendation:?\s*(.+?)(?:\n|$)/i);
+      if (fixMatch) {
+        setSuggestedFix(fixMatch[1]);
+      }
+      
+      toast({
+        title: "AI Analysis Complete",
+        description: "Fresh analysis generated from build logs.",
+      });
+    } catch (error) {
+      console.error('Error analyzing failure:', error);
+      toast({
+        title: "Analysis Failed",
+        description: "Failed to analyze failure. Please check your OpenAI API key and try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   const handleApplyFix = async () => {
     setIsAnalyzing(true);
@@ -150,6 +192,15 @@ export const FailureAnalysis = () => {
           <CardTitle className="flex items-center gap-2">
             <Brain className="w-5 h-5 text-purple-600" />
             AI Failure Analysis
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handleAnalyzeFailure}
+              disabled={isAnalyzing}
+              className="ml-auto"
+            >
+              {isAnalyzing ? 'Analyzing...' : 'Re-analyze with AI'}
+            </Button>
           </CardTitle>
           <CardDescription>
             Latest failure analyzed with intelligent log parsing and suggested fixes
@@ -174,7 +225,7 @@ export const FailureAnalysis = () => {
             <Alert className="border-purple-200 bg-purple-50">
               <Brain className="w-4 h-4 text-purple-600" />
               <AlertDescription className="text-purple-800">
-                <strong>AI Analysis:</strong> {recentFailure.aiAnalysis}
+                <strong>AI Analysis:</strong> {aiAnalysis}
               </AlertDescription>
             </Alert>
             
@@ -183,12 +234,12 @@ export const FailureAnalysis = () => {
                 <Lightbulb className="w-4 h-4 text-green-600 mt-0.5" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-green-800">Suggested Fix:</p>
-                  <p className="text-sm text-green-700">{recentFailure.suggestedFix}</p>
+                  <p className="text-sm text-green-700">{suggestedFix}</p>
                 </div>
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => handleCopyFix(recentFailure.suggestedFix)}
+                  onClick={() => handleCopyFix(suggestedFix)}
                   className="text-green-700 hover:text-green-800"
                 >
                   <Copy className="w-3 h-3" />

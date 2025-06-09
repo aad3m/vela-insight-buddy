@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Zap, FileText, CheckCircle, AlertTriangle, Clock, Gauge, Copy, Download, Upload, FileCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Optimization {
   id: string;
@@ -293,43 +294,26 @@ steps:
 
     setAnalyzingConfig(true);
     try {
-      // TODO: Replace with actual AI API call
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      const mockAnalysis = `Analysis of your .vela.yml configuration:
+      const { data, error } = await supabase.functions.invoke('analyze-vela-config', {
+        body: {
+          config: uploadedConfig,
+          analysisType: 'analyze'
+        }
+      });
 
-🔍 **Issues Found:**
-- Missing dependency caching (estimated 40% build time savings)
-- No parallelization in test steps
-- Docker builds not using BuildKit
-- No retry logic for flaky steps
+      if (error) throw error;
 
-⚡ **Performance Opportunities:**
-- Add cache restoration/saving steps
-- Split test execution across workers
-- Enable Docker BuildKit for faster builds
-- Implement smart artifact caching
-
-💰 **Cost Optimization:**
-- Current estimated cost: $180/month
-- Potential savings: $72/month (40% reduction)
-- ROI timeline: Immediate
-
-🛡️ **Reliability Improvements:**
-- Add automatic retry for network-dependent steps
-- Implement health checks for services
-- Add timeout configurations`;
-
-      setAnalysisResult(mockAnalysis);
+      setAnalysisResult(data.result);
       
       toast({
         title: "Analysis Complete",
         description: "Your configuration has been analyzed with AI recommendations.",
       });
     } catch (error) {
+      console.error('Error analyzing config:', error);
       toast({
         title: "Analysis Failed",
-        description: "Failed to analyze configuration. Please try again.",
+        description: "Failed to analyze configuration. Please check your OpenAI API key and try again.",
         variant: "destructive"
       });
     } finally {
@@ -349,92 +333,26 @@ steps:
 
     setGeneratingConfig(true);
     try {
-      // TODO: Replace with actual AI API call
-      await new Promise(resolve => setTimeout(resolve, 4000));
-      
-      const optimized = `version: "1"
-worker:
-  platform: linux/amd64
+      const { data, error } = await supabase.functions.invoke('analyze-vela-config', {
+        body: {
+          config: uploadedConfig,
+          analysisType: 'optimize'
+        }
+      });
 
-steps:
-  - name: restore-cache
-    image: plugins/cache
-    settings:
-      restore: true
-      key: deps-{{ checksum "package-lock.json" }}
-      mount:
-        - node_modules
-        - .npm
-      
-  - name: install-deps
-    image: node:18
-    commands:
-      - npm ci --cache .npm --prefer-offline
-    depends_on:
-      - restore-cache
-      
-  - name: lint
-    image: node:18
-    commands:
-      - npm run lint
-    depends_on:
-      - install-deps
-      
-  - name: test-unit
-    image: node:18
-    commands:
-      - npm run test:unit -- --parallel --max-workers=4
-    depends_on:
-      - install-deps
-      
-  - name: test-integration
-    image: node:18
-    commands:
-      - npm run test:integration
-    depends_on:
-      - install-deps
-      
-  - name: save-cache
-    image: plugins/cache
-    settings:
-      rebuild: true
-      key: deps-{{ checksum "package-lock.json" }}
-      mount:
-        - node_modules
-        - .npm
-    depends_on:
-      - install-deps
-      
-  - name: build
-    image: docker:latest
-    commands:
-      - export DOCKER_BUILDKIT=1
-      - docker build --cache-from=app:latest --build-arg BUILDKIT_INLINE_CACHE=1 -t app .
-    depends_on:
-      - test-unit
-      - test-integration
-    retry:
-      attempts: 3
-      
-  - name: security-scan
-    image: aquasec/trivy
-    commands:
-      - trivy image app
-    depends_on:
-      - build
-    when:
-      branch: [main, develop]`;
+      if (error) throw error;
 
-      setOptimizedConfig(optimized);
+      setOptimizedConfig(data.result);
       
       toast({
         title: "Configuration Optimized",
         description: "AI has generated an optimized version of your .vela.yml file.",
       });
     } catch (error) {
+      console.error('Error optimizing config:', error);
       toast({
         title: "Optimization Failed",
-        description: "Failed to optimize configuration. Please try again.",
+        description: "Failed to optimize configuration. Please check your OpenAI API key and try again.",
         variant: "destructive"
       });
     } finally {
