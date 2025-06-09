@@ -1,10 +1,12 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Zap, FileText, CheckCircle, AlertTriangle, Clock, Gauge, Copy, Download } from 'lucide-react';
+import { Zap, FileText, CheckCircle, AlertTriangle, Clock, Gauge, Copy, Download, Upload, FileCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Optimization {
@@ -162,44 +164,190 @@ export const ConfigOptimizer = () => {
   const [selectedOptimization, setSelectedOptimization] = useState<Optimization | null>(null);
   const [applyingOptimization, setApplyingOptimization] = useState<string | null>(null);
   const [generatingConfig, setGeneratingConfig] = useState(false);
+  const [uploadedConfig, setUploadedConfig] = useState<string>('');
+  const [analyzingConfig, setAnalyzingConfig] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<string>('');
+  const [optimizedConfig, setOptimizedConfig] = useState<string>('');
   const { toast } = useToast();
 
-  const handleApplyOptimization = async (optimizationId: string) => {
-    setApplyingOptimization(optimizationId);
-    try {
-      // Simulate applying optimization
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const optimization = optimizations.find(opt => opt.id === optimizationId);
-      toast({
-        title: "Optimization Applied",
-        description: `${optimization?.title} has been applied to ${optimization?.repo}`,
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to apply optimization. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setApplyingOptimization(null);
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.name.endsWith('.yml') || file.name.endsWith('.yaml')) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const content = e.target?.result as string;
+          setUploadedConfig(content);
+          toast({
+            title: "File Uploaded",
+            description: `${file.name} has been loaded successfully.`,
+          });
+        };
+        reader.readAsText(file);
+      } else {
+        toast({
+          title: "Invalid File Type",
+          description: "Please upload a .yml or .yaml file.",
+          variant: "destructive"
+        });
+      }
     }
   };
 
-  const handleGenerateCustomConfig = async () => {
-    setGeneratingConfig(true);
+  const handleAnalyzeConfig = async () => {
+    if (!uploadedConfig) {
+      toast({
+        title: "No Configuration",
+        description: "Please upload a .vela.yml file first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setAnalyzingConfig(true);
     try {
-      // Simulate AI config generation
+      // TODO: Replace with actual AI API call
       await new Promise(resolve => setTimeout(resolve, 3000));
       
+      const mockAnalysis = `Analysis of your .vela.yml configuration:
+
+🔍 **Issues Found:**
+- Missing dependency caching (estimated 40% build time savings)
+- No parallelization in test steps
+- Docker builds not using BuildKit
+- No retry logic for flaky steps
+
+⚡ **Performance Opportunities:**
+- Add cache restoration/saving steps
+- Split test execution across workers
+- Enable Docker BuildKit for faster builds
+- Implement smart artifact caching
+
+💰 **Cost Optimization:**
+- Current estimated cost: $180/month
+- Potential savings: $72/month (40% reduction)
+- ROI timeline: Immediate
+
+🛡️ **Reliability Improvements:**
+- Add automatic retry for network-dependent steps
+- Implement health checks for services
+- Add timeout configurations`;
+
+      setAnalysisResult(mockAnalysis);
+      
       toast({
-        title: "Custom Config Generated",
-        description: "AI-optimized .vela.yml configuration has been generated based on your repository patterns.",
+        title: "Analysis Complete",
+        description: "Your configuration has been analyzed with AI recommendations.",
       });
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to generate config. Please try again.",
+        title: "Analysis Failed",
+        description: "Failed to analyze configuration. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setAnalyzingConfig(false);
+    }
+  };
+
+  const handleOptimizeConfig = async () => {
+    if (!uploadedConfig) {
+      toast({
+        title: "No Configuration",
+        description: "Please upload a .vela.yml file first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setGeneratingConfig(true);
+    try {
+      // TODO: Replace with actual AI API call
+      await new Promise(resolve => setTimeout(resolve, 4000));
+      
+      const optimized = `version: "1"
+worker:
+  platform: linux/amd64
+
+steps:
+  - name: restore-cache
+    image: plugins/cache
+    settings:
+      restore: true
+      key: deps-{{ checksum "package-lock.json" }}
+      mount:
+        - node_modules
+        - .npm
+      
+  - name: install-deps
+    image: node:18
+    commands:
+      - npm ci --cache .npm --prefer-offline
+    depends_on:
+      - restore-cache
+      
+  - name: lint
+    image: node:18
+    commands:
+      - npm run lint
+    depends_on:
+      - install-deps
+      
+  - name: test-unit
+    image: node:18
+    commands:
+      - npm run test:unit -- --parallel --max-workers=4
+    depends_on:
+      - install-deps
+      
+  - name: test-integration
+    image: node:18
+    commands:
+      - npm run test:integration
+    depends_on:
+      - install-deps
+      
+  - name: save-cache
+    image: plugins/cache
+    settings:
+      rebuild: true
+      key: deps-{{ checksum "package-lock.json" }}
+      mount:
+        - node_modules
+        - .npm
+    depends_on:
+      - install-deps
+      
+  - name: build
+    image: docker:latest
+    commands:
+      - export DOCKER_BUILDKIT=1
+      - docker build --cache-from=app:latest --build-arg BUILDKIT_INLINE_CACHE=1 -t app .
+    depends_on:
+      - test-unit
+      - test-integration
+    retry:
+      attempts: 3
+      
+  - name: security-scan
+    image: aquasec/trivy
+    commands:
+      - trivy image app
+    depends_on:
+      - build
+    when:
+      branch: [main, develop]`;
+
+      setOptimizedConfig(optimized);
+      
+      toast({
+        title: "Configuration Optimized",
+        description: "AI has generated an optimized version of your .vela.yml file.",
+      });
+    } catch (error) {
+      toast({
+        title: "Optimization Failed",
+        description: "Failed to optimize configuration. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -266,8 +414,9 @@ export const ConfigOptimizer = () => {
       </Card>
 
       <Tabs defaultValue="recommendations" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="recommendations">Recommendations</TabsTrigger>
+          <TabsTrigger value="upload">Upload & Analyze</TabsTrigger>
           <TabsTrigger value="examples">Config Examples</TabsTrigger>
         </TabsList>
 
@@ -334,6 +483,155 @@ export const ConfigOptimizer = () => {
                 </CardContent>
               </Card>
             ))}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="upload">
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Upload className="w-5 h-5 text-blue-600" />
+                  Upload Your .vela.yml File
+                </CardTitle>
+                <CardDescription>
+                  Upload your existing Vela configuration file to get AI-powered analysis and optimization recommendations
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
+                  <input
+                    type="file"
+                    accept=".yml,.yaml"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    id="config-upload"
+                  />
+                  <label htmlFor="config-upload" className="cursor-pointer">
+                    <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-lg font-medium text-gray-900 mb-2">
+                      Click to upload .vela.yml file
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      Or drag and drop your configuration file here
+                    </p>
+                  </label>
+                </div>
+
+                {uploadedConfig && (
+                  <div className="space-y-4">
+                    <Alert>
+                      <FileCheck className="w-4 h-4" />
+                      <AlertDescription>
+                        Configuration file loaded successfully! You can now analyze or optimize it.
+                      </AlertDescription>
+                    </Alert>
+                    
+                    <div className="flex gap-2">
+                      <Button 
+                        onClick={handleAnalyzeConfig}
+                        disabled={analyzingConfig}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        {analyzingConfig ? 'Analyzing...' : 'Analyze with AI'}
+                      </Button>
+                      <Button 
+                        onClick={handleOptimizeConfig}
+                        disabled={generatingConfig}
+                        variant="outline"
+                      >
+                        {generatingConfig ? 'Optimizing...' : 'Generate Optimized Version'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {analysisResult && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-green-600" />
+                    AI Analysis Results
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <pre className="whitespace-pre-wrap text-sm text-gray-800">{analysisResult}</pre>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {optimizedConfig && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Zap className="w-5 h-5 text-yellow-600" />
+                    Optimized Configuration
+                  </CardTitle>
+                  <CardDescription>
+                    AI-generated optimized version of your .vela.yml file
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex gap-2 mb-4">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleCopyConfig(optimizedConfig)}
+                    >
+                      <Copy className="w-3 h-3 mr-1" />
+                      Copy
+                    </Button>
+                    <Button 
+                      size="sm"
+                      variant="outline" 
+                      onClick={() => {
+                        const blob = new Blob([optimizedConfig], { type: 'text/yaml' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = '.vela-optimized.yml';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        
+                        toast({
+                          title: "Config Downloaded",
+                          description: "Optimized .vela.yml file has been downloaded.",
+                        });
+                      }}
+                    >
+                      <Download className="w-3 h-3 mr-1" />
+                      Download
+                    </Button>
+                  </div>
+                  
+                  <div className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
+                    <pre className="text-sm whitespace-pre-wrap">{optimizedConfig}</pre>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {uploadedConfig && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Original Configuration</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Textarea
+                    value={uploadedConfig}
+                    onChange={(e) => setUploadedConfig(e.target.value)}
+                    className="min-h-[300px] font-mono text-sm"
+                    placeholder="Your .vela.yml content will appear here..."
+                  />
+                </CardContent>
+              </Card>
+            )}
           </div>
         </TabsContent>
 
