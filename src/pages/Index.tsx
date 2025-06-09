@@ -16,16 +16,38 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { EnhancedFailureAnalysis } from '@/components/EnhancedFailureAnalysis';
 import { useDemoData } from '@/hooks/useDemoData';
+import { usePipelines } from '@/hooks/usePipelines';
 
 const Index = () => {
   const { user, signOut, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { createDemoPipelines, loading: demoLoading } = useDemoData();
-  const [activePipelines, setActivePipelines] = useState(12);
-  const [failedPipelines, setFailedPipelines] = useState(3);
-  const [successRate, setSuccessRate] = useState(94);
+  const { pipelines } = usePipelines();
   const [isSigningOut, setIsSigningOut] = useState(false);
+
+  // Calculate metrics from actual pipeline data
+  const activePipelines = pipelines.filter(p => p.status === 'running').length;
+  const failedPipelines = pipelines.filter(p => p.status === 'failed').length;
+  const successfulPipelines = pipelines.filter(p => p.status === 'success').length;
+  const totalPipelines = pipelines.length;
+  const successRate = totalPipelines > 0 ? Math.round((successfulPipelines / totalPipelines) * 100) : 0;
+
+  // Calculate average duration from successful pipelines
+  const avgDuration = pipelines
+    .filter(p => p.duration && p.status === 'success')
+    .map(p => {
+      const match = p.duration?.match(/(\d+)m\s*(\d+)?s?/);
+      if (match) {
+        const minutes = parseInt(match[1]) || 0;
+        const seconds = parseInt(match[2]) || 0;
+        return minutes + (seconds / 60);
+      }
+      return 0;
+    })
+    .reduce((acc, curr, _, arr) => arr.length > 0 ? acc + curr / arr.length : 0, 0);
+
+  const formattedAvgDuration = avgDuration > 0 ? `${Math.floor(avgDuration)}m` : '0m';
 
   // Redirect to auth if not authenticated
   useEffect(() => {
@@ -72,17 +94,6 @@ const Index = () => {
   const handleCreateDemoData = async () => {
     await createDemoPipelines();
   };
-
-  // Simulate real-time updates
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setActivePipelines(prev => Math.max(8, prev + Math.floor(Math.random() * 3) - 1));
-      setFailedPipelines(prev => Math.max(0, Math.min(5, prev + Math.floor(Math.random() * 3) - 1)));
-      setSuccessRate(prev => Math.max(85, Math.min(98, prev + Math.floor(Math.random() * 3) - 1)));
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, []);
 
   // Show loading spinner while checking auth
   if (loading) {
@@ -185,7 +196,7 @@ const Index = () => {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-green-600">{successRate}%</div>
-              <p className="text-sm text-gray-500 mt-1">Last 24 hours</p>
+              <p className="text-sm text-gray-500 mt-1">Overall performance</p>
             </CardContent>
           </Card>
 
@@ -194,7 +205,7 @@ const Index = () => {
               <CardTitle className="text-sm font-medium text-gray-600">Avg Duration</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-purple-600">8.4m</div>
+              <div className="text-3xl font-bold text-purple-600">{formattedAvgDuration}</div>
               <p className="text-sm text-gray-500 mt-1">Deploy to prod</p>
             </CardContent>
           </Card>
