@@ -94,25 +94,24 @@ export const FailureAnalysis = () => {
 
       if (error) throw error;
 
-      // Parse the AI response to extract analysis and fix
       const analysis = data.analysis;
       setAiAnalysis(analysis);
       
-      // Extract suggested fix from the analysis (this is a simple approach)
+      // Extract suggested fix from the analysis
       const fixMatch = analysis.match(/fix|solution|recommendation:?\s*(.+?)(?:\n|$)/i);
       if (fixMatch) {
         setSuggestedFix(fixMatch[1]);
       }
       
       toast({
-        title: "AI Analysis Complete",
-        description: "Fresh analysis generated from build logs.",
+        title: "Groq Analysis Complete",
+        description: "Fresh analysis generated using Groq Llama3-8B.",
       });
     } catch (error) {
       console.error('Error analyzing failure:', error);
       toast({
         title: "Analysis Failed",
-        description: "Failed to analyze failure. Please check your OpenAI API key and try again.",
+        description: "Failed to analyze failure. Please check your Groq API key and try again.",
         variant: "destructive"
       });
     } finally {
@@ -191,7 +190,7 @@ export const FailureAnalysis = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Brain className="w-5 h-5 text-purple-600" />
-            AI Failure Analysis
+            Groq AI Failure Analysis
             <Button
               size="sm"
               variant="ghost"
@@ -199,11 +198,11 @@ export const FailureAnalysis = () => {
               disabled={isAnalyzing}
               className="ml-auto"
             >
-              {isAnalyzing ? 'Analyzing...' : 'Re-analyze with AI'}
+              {isAnalyzing ? 'Analyzing...' : 'Re-analyze with Groq'}
             </Button>
           </CardTitle>
           <CardDescription>
-            Latest failure analyzed with intelligent log parsing and suggested fixes
+            Latest failure analyzed with Groq Llama3-8B and intelligent log parsing
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -225,7 +224,7 @@ export const FailureAnalysis = () => {
             <Alert className="border-purple-200 bg-purple-50">
               <Brain className="w-4 h-4 text-purple-600" />
               <AlertDescription className="text-purple-800">
-                <strong>AI Analysis:</strong> {aiAnalysis}
+                <strong>Groq Analysis:</strong> {aiAnalysis}
               </AlertDescription>
             </Alert>
             

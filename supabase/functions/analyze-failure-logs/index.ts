@@ -2,7 +2,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const groqApiKey = Deno.env.get('GROQ_API_KEY');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,50 +17,46 @@ serve(async (req) => {
   try {
     const { logs, error, repo, step } = await req.json();
 
-    const systemPrompt = `You are an expert DevOps engineer specializing in CI/CD pipeline troubleshooting. Analyze the provided build failure logs and error messages to:
+    console.log('Analyzing failure with Groq:', { repo, step });
 
-1. Identify the root cause of the failure
-2. Provide a clear explanation of what went wrong
-3. Suggest specific fixes or improvements
-4. Recommend preventive measures
+    if (!groqApiKey) {
+      throw new Error('Groq API key not found');
+    }
 
-Be concise but thorough. Focus on actionable solutions.`;
-
-    const userPrompt = `Analyze this build failure:
-
-Repository: ${repo}
-Step: ${step}
-Error: ${error}
-
-Build logs:
-\`\`\`
-${logs}
-\`\`\`
-
-Please provide:
-1. Root cause analysis
-2. Specific fix recommendations
-3. Prevention strategies`;
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
+        'Authorization': `Bearer ${groqApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'llama3-8b-8192',
         messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
+          { 
+            role: 'system', 
+            content: 'You are an expert DevOps engineer analyzing CI/CD pipeline failures. Provide concise, actionable analysis and solutions.' 
+          },
+          { 
+            role: 'user', 
+            content: `Analyze this pipeline failure:
+
+Repository: ${repo}
+Failed Step: ${step}
+Error: ${error}
+
+Build Logs:
+${logs}
+
+Provide a brief analysis of what went wrong and how to fix it.`
+          }
         ],
-        temperature: 0.2,
-        max_tokens: 1500,
+        temperature: 0.1,
+        max_tokens: 1000,
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
+      throw new Error(`Groq API error: ${response.status}`);
     }
 
     const data = await response.json();
