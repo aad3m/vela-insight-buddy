@@ -30,6 +30,42 @@ const Index = () => {
     }
   }, [user, loading, navigate]);
 
+  const handleSignOut = async () => {
+    try {
+      const { error } = await signOut();
+      if (error) {
+        toast({
+          title: "Error signing out",
+          description: error.message,
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Signed out successfully",
+          description: "See you next time!"
+        });
+        navigate('/auth');
+      }
+    } catch (error) {
+      toast({
+        title: "Error signing out",
+        description: "An unexpected error occurred",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Simulate real-time updates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActivePipelines(prev => Math.max(8, prev + Math.floor(Math.random() * 3) - 1));
+      setFailedPipelines(prev => Math.max(0, Math.min(5, prev + Math.floor(Math.random() * 3) - 1)));
+      setSuccessRate(prev => Math.max(85, Math.min(98, prev + Math.floor(Math.random() * 3) - 1)));
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   // Show loading spinner while checking auth
   if (loading) {
     return (
@@ -48,33 +84,6 @@ const Index = () => {
   if (!user) {
     return null;
   }
-
-  const handleSignOut = async () => {
-    const { error } = await signOut();
-    if (error) {
-      toast({
-        title: "Error signing out",
-        description: error.message,
-        variant: "destructive"
-      });
-    } else {
-      toast({
-        title: "Signed out successfully",
-        description: "See you next time!"
-      });
-    }
-  };
-
-  // Simulate real-time updates
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setActivePipelines(prev => Math.max(8, prev + Math.floor(Math.random() * 3) - 1));
-      setFailedPipelines(prev => Math.max(0, Math.min(5, prev + Math.floor(Math.random() * 3) - 1)));
-      setSuccessRate(prev => Math.max(85, Math.min(98, prev + Math.floor(Math.random() * 3) - 1)));
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-red-50">
