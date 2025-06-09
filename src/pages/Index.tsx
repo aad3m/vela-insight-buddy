@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -134,15 +133,6 @@ const Index = () => {
                 <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
                 Connected to Vela
               </Badge>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleCreateDemoData}
-                disabled={demoLoading}
-              >
-                <Database className="w-4 h-4 mr-2" />
-                {demoLoading ? 'Creating...' : 'Add Demo Data'}
-              </Button>
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg">
                   <User className="w-4 h-4 text-gray-600" />
