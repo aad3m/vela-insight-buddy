@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -169,6 +168,94 @@ export const ConfigOptimizer = () => {
   const [analysisResult, setAnalysisResult] = useState<string>('');
   const [optimizedConfig, setOptimizedConfig] = useState<string>('');
   const { toast } = useToast();
+
+  const handleApplyOptimization = async (optimizationId: string) => {
+    setApplyingOptimization(optimizationId);
+    try {
+      // TODO: Replace with actual API call to apply optimization
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      toast({
+        title: "Optimization Applied",
+        description: "The optimization has been successfully applied to your configuration.",
+      });
+    } catch (error) {
+      toast({
+        title: "Application Failed",
+        description: "Failed to apply optimization. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setApplyingOptimization(null);
+    }
+  };
+
+  const handleGenerateCustomConfig = async () => {
+    setGeneratingConfig(true);
+    try {
+      // TODO: Replace with actual AI API call
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      const customConfig = `version: "1"
+worker:
+  platform: linux/amd64
+
+steps:
+  - name: setup
+    image: alpine/git
+    commands:
+      - git submodule update --init --recursive
+      
+  - name: cache-restore
+    image: plugins/cache
+    settings:
+      restore: true
+      key: custom-deps-{{ checksum "requirements.txt" }}
+      
+  - name: build
+    image: node:18
+    commands:
+      - npm ci --cache .npm
+      - npm run build
+    environment:
+      - NODE_ENV=production
+      
+  - name: test
+    image: node:18
+    commands:
+      - npm run test:coverage
+    depends_on:
+      - build
+      
+  - name: deploy
+    image: plugins/docker
+    settings:
+      registry: registry.example.com
+      repo: custom-app
+      tags:
+        - latest
+        - "\${DRONE_COMMIT_SHA:0:8}"
+    depends_on:
+      - test
+    when:
+      branch: [main]`;
+
+      setOptimizedConfig(customConfig);
+      
+      toast({
+        title: "Custom Config Generated",
+        description: "A custom optimized configuration has been generated for your project.",
+      });
+    } catch (error) {
+      toast({
+        title: "Generation Failed",
+        description: "Failed to generate custom configuration. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setGeneratingConfig(false);
+    }
+  };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
