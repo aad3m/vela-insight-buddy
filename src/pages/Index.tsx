@@ -1,21 +1,69 @@
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { AlertCircle, CheckCircle, Clock, Zap, TrendingUp, Users, GitBranch, Settings } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, Zap, TrendingUp, Users, GitBranch, Settings, LogOut, User } from 'lucide-react';
 import { PipelineStatus } from '@/components/PipelineStatus';
 import { FailureAnalysis } from '@/components/FailureAnalysis';
 import { TeamMetrics } from '@/components/TeamMetrics';
 import { ConfigOptimizer } from '@/components/ConfigOptimizer';
 import { SlackIntegration } from '@/components/SlackIntegration';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 
 const Index = () => {
+  const { user, signOut, loading } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const [activePipelines, setActivePipelines] = useState(12);
   const [failedPipelines, setFailedPipelines] = useState(3);
   const [successRate, setSuccessRate] = useState(94);
+
+  // Redirect to auth if not authenticated
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate('/auth');
+    }
+  }, [user, loading, navigate]);
+
+  // Show loading spinner while checking auth
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-red-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-gradient-to-br from-red-600 to-red-700 rounded-lg flex items-center justify-center mx-auto mb-4">
+            <Zap className="w-8 h-8 text-white animate-pulse" />
+          </div>
+          <p className="text-gray-600">Loading VelaBuddy...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render if not authenticated
+  if (!user) {
+    return null;
+  }
+
+  const handleSignOut = async () => {
+    const { error } = await signOut();
+    if (error) {
+      toast({
+        title: "Error signing out",
+        description: error.message,
+        variant: "destructive"
+      });
+    } else {
+      toast({
+        title: "Signed out successfully",
+        description: "See you next time!"
+      });
+    }
+  };
 
   // Simulate real-time updates
   useEffect(() => {
@@ -48,10 +96,20 @@ const Index = () => {
                 <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
                 Connected to Vela
               </Badge>
-              <Button variant="outline" size="sm">
-                <Settings className="w-4 h-4 mr-2" />
-                Settings
-              </Button>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg">
+                  <User className="w-4 h-4 text-gray-600" />
+                  <span className="text-sm text-gray-700">{user.email}</span>
+                </div>
+                <Button variant="outline" size="sm">
+                  <Settings className="w-4 h-4 mr-2" />
+                  Settings
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleSignOut}>
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Sign Out
+                </Button>
+              </div>
             </div>
           </div>
         </div>
