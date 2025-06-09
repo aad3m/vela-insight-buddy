@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Zap, FileText, CheckCircle, AlertTriangle, Clock, Gauge, Copy, Download, Upload, FileCheck, Brain } from 'lucide-react';
+import { Zap, FileText, CheckCircle, AlertTriangle, Clock, Gauge, Copy, Download, Upload, FileCheck, Brain, GitCompare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -168,6 +168,7 @@ export const ConfigOptimizer = () => {
   const [analyzingConfig, setAnalyzingConfig] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<string>('');
   const [optimizedConfig, setOptimizedConfig] = useState<string>('');
+  const [showDiff, setShowDiff] = useState(false);
   const { toast } = useToast();
 
   const handleApplyOptimization = async (optimizationId: string) => {
@@ -341,6 +342,7 @@ steps:
       if (error) throw error;
 
       setOptimizedConfig(data.result);
+      setShowDiff(true); // Show diff view by default when optimization is complete
       
       toast({
         title: "Configuration Optimized",
@@ -579,6 +581,22 @@ steps:
                 <div className="flex gap-2 mb-4">
                   <Button
                     size="sm"
+                    variant={showDiff ? "default" : "outline"}
+                    onClick={() => setShowDiff(true)}
+                  >
+                    <GitCompare className="w-3 h-3 mr-1" />
+                    Show Diff
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={!showDiff ? "default" : "outline"}
+                    onClick={() => setShowDiff(false)}
+                  >
+                    <FileText className="w-3 h-3 mr-1" />
+                    Optimized Only
+                  </Button>
+                  <Button
+                    size="sm"
                     variant="outline"
                     onClick={() => handleCopyConfig(optimizedConfig)}
                   >
@@ -610,9 +628,37 @@ steps:
                   </Button>
                 </div>
                 
-                <div className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-                  <pre className="text-sm whitespace-pre-wrap">{optimizedConfig}</pre>
-                </div>
+                {showDiff ? (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <h4 className="font-semibold text-red-700">Original Configuration</h4>
+                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                          Before
+                        </Badge>
+                      </div>
+                      <div className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto max-h-96 overflow-y-auto">
+                        <pre className="text-sm whitespace-pre-wrap">{uploadedConfig}</pre>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <h4 className="font-semibold text-green-700">Optimized Configuration</h4>
+                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                          After
+                        </Badge>
+                      </div>
+                      <div className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto max-h-96 overflow-y-auto">
+                        <pre className="text-sm whitespace-pre-wrap">{optimizedConfig}</pre>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
+                    <pre className="text-sm whitespace-pre-wrap">{optimizedConfig}</pre>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
