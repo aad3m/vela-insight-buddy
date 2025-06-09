@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -173,7 +174,6 @@ export const ConfigOptimizer = () => {
   const handleApplyOptimization = async (optimizationId: string) => {
     setApplyingOptimization(optimizationId);
     try {
-      // TODO: Replace with actual API call to apply optimization
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       toast({
@@ -194,7 +194,6 @@ export const ConfigOptimizer = () => {
   const handleGenerateCustomConfig = async () => {
     setGeneratingConfig(true);
     try {
-      // TODO: Replace with actual AI API call
       await new Promise(resolve => setTimeout(resolve, 3000));
       
       const customConfig = `version: "1"
@@ -418,229 +417,225 @@ steps:
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="recommendations" className="space-y-4">
+      <Tabs defaultValue="recommendations" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="recommendations">Recommendations</TabsTrigger>
           <TabsTrigger value="upload">Upload & Analyze</TabsTrigger>
           <TabsTrigger value="examples">Config Examples</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="recommendations">
-          <div className="space-y-4">
-            {optimizations.map((opt) => (
-              <Card key={opt.id} className="hover:shadow-md transition-shadow cursor-pointer"
-                    onClick={() => setSelectedOptimization(opt)}>
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-start gap-3">
-                      {getTypeIcon(opt.type)}
-                      <div>
-                        <h4 className="font-semibold text-gray-900">{opt.title}</h4>
-                        <p className="text-sm text-gray-600 mt-1">{opt.description}</p>
-                      </div>
+        <TabsContent value="recommendations" className="space-y-4">
+          {optimizations.map((opt) => (
+            <Card key={opt.id} className="hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => setSelectedOptimization(opt)}>
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-start gap-3">
+                    {getTypeIcon(opt.type)}
+                    <div>
+                      <h4 className="font-semibold text-gray-900">{opt.title}</h4>
+                      <p className="text-sm text-gray-600 mt-1">{opt.description}</p>
                     </div>
-                    <div className="flex gap-2">
-                      <Badge variant="outline" className={getImpactColor(opt.impact)}>
-                        {opt.impact} impact
-                      </Badge>
-                      <Badge variant="outline" className={getEffortColor(opt.effort)}>
-                        {opt.effort} effort
-                      </Badge>
-                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Badge variant="outline" className={getImpactColor(opt.impact)}>
+                      {opt.impact} impact
+                    </Badge>
+                    <Badge variant="outline" className={getEffortColor(opt.effort)}>
+                      {opt.effort} effort
+                    </Badge>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex gap-4 text-sm text-gray-600">
+                    <span>📁 {opt.repo}</span>
+                    <span>📄 {opt.file}</span>
                   </div>
                   
-                  <div className="flex items-center justify-between">
-                    <div className="flex gap-4 text-sm text-gray-600">
-                      <span>📁 {opt.repo}</span>
-                      <span>📄 {opt.file}</span>
-                    </div>
-                    
-                    <div className="flex gap-4 text-sm">
-                      {opt.savingsTime && (
-                        <span className="text-blue-600 font-medium">{opt.savingsTime}</span>
-                      )}
-                      {opt.savingsCost && (
-                        <span className="text-green-600 font-medium">{opt.savingsCost}</span>
-                      )}
-                    </div>
+                  <div className="flex gap-4 text-sm">
+                    {opt.savingsTime && (
+                      <span className="text-blue-600 font-medium">{opt.savingsTime}</span>
+                    )}
+                    {opt.savingsCost && (
+                      <span className="text-green-600 font-medium">{opt.savingsCost}</span>
+                    )}
                   </div>
-                  
-                  <div className="flex gap-2 mt-3">
-                    <Button 
-                      size="sm" 
-                      className="bg-blue-600 hover:bg-blue-700"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleApplyOptimization(opt.id);
-                      }}
-                      disabled={applyingOptimization === opt.id}
-                    >
-                      {applyingOptimization === opt.id ? 'Applying...' : 'Apply Optimization'}
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      View Details
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                </div>
+                
+                <div className="flex gap-2 mt-3">
+                  <Button 
+                    size="sm" 
+                    className="bg-blue-600 hover:bg-blue-700"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleApplyOptimization(opt.id);
+                    }}
+                    disabled={applyingOptimization === opt.id}
+                  >
+                    {applyingOptimization === opt.id ? 'Applying...' : 'Apply Optimization'}
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    View Details
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </TabsContent>
 
-        <TabsContent value="upload">
-          <div className="space-y-6">
+        <TabsContent value="upload" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Upload className="w-5 h-5 text-blue-600" />
+                Upload Your .vela.yml File
+              </CardTitle>
+              <CardDescription>
+                Upload your existing Vela configuration file to get AI-powered analysis and optimization recommendations
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
+                <input
+                  type="file"
+                  accept=".yml,.yaml"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  id="config-upload"
+                />
+                <label htmlFor="config-upload" className="cursor-pointer">
+                  <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-lg font-medium text-gray-900 mb-2">
+                    Click to upload .vela.yml file
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Or drag and drop your configuration file here
+                  </p>
+                </label>
+              </div>
+
+              {uploadedConfig && (
+                <div className="space-y-4">
+                  <Alert>
+                    <FileCheck className="w-4 h-4" />
+                    <AlertDescription>
+                      Configuration file loaded successfully! You can now analyze or optimize it.
+                    </AlertDescription>
+                  </Alert>
+                  
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={handleAnalyzeConfig}
+                      disabled={analyzingConfig}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      {analyzingConfig ? 'Analyzing...' : 'Analyze with AI'}
+                    </Button>
+                    <Button 
+                      onClick={handleOptimizeConfig}
+                      disabled={generatingConfig}
+                      variant="outline"
+                    >
+                      {generatingConfig ? 'Optimizing...' : 'Generate Optimized Version'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {analysisResult && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Upload className="w-5 h-5 text-blue-600" />
-                  Upload Your .vela.yml File
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                  AI Analysis Results
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <pre className="whitespace-pre-wrap text-sm text-gray-800">{analysisResult}</pre>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {optimizedConfig && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-yellow-600" />
+                  Optimized Configuration
                 </CardTitle>
                 <CardDescription>
-                  Upload your existing Vela configuration file to get AI-powered analysis and optimization recommendations
+                  AI-generated optimized version of your .vela.yml file
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
-                  <input
-                    type="file"
-                    accept=".yml,.yaml"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                    id="config-upload"
-                  />
-                  <label htmlFor="config-upload" className="cursor-pointer">
-                    <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-lg font-medium text-gray-900 mb-2">
-                      Click to upload .vela.yml file
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      Or drag and drop your configuration file here
-                    </p>
-                  </label>
+                <div className="flex gap-2 mb-4">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleCopyConfig(optimizedConfig)}
+                  >
+                    <Copy className="w-3 h-3 mr-1" />
+                    Copy
+                  </Button>
+                  <Button 
+                    size="sm"
+                    variant="outline" 
+                    onClick={() => {
+                      const blob = new Blob([optimizedConfig], { type: 'text/yaml' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = '.vela-optimized.yml';
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+                      
+                      toast({
+                        title: "Config Downloaded",
+                        description: "Optimized .vela.yml file has been downloaded.",
+                      });
+                    }}
+                  >
+                    <Download className="w-3 h-3 mr-1" />
+                    Download
+                  </Button>
                 </div>
-
-                {uploadedConfig && (
-                  <div className="space-y-4">
-                    <Alert>
-                      <FileCheck className="w-4 h-4" />
-                      <AlertDescription>
-                        Configuration file loaded successfully! You can now analyze or optimize it.
-                      </AlertDescription>
-                    </Alert>
-                    
-                    <div className="flex gap-2">
-                      <Button 
-                        onClick={handleAnalyzeConfig}
-                        disabled={analyzingConfig}
-                        className="bg-blue-600 hover:bg-blue-700"
-                      >
-                        {analyzingConfig ? 'Analyzing...' : 'Analyze with AI'}
-                      </Button>
-                      <Button 
-                        onClick={handleOptimizeConfig}
-                        disabled={generatingConfig}
-                        variant="outline"
-                      >
-                        {generatingConfig ? 'Optimizing...' : 'Generate Optimized Version'}
-                      </Button>
-                    </div>
-                  </div>
-                )}
+                
+                <div className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
+                  <pre className="text-sm whitespace-pre-wrap">{optimizedConfig}</pre>
+                </div>
               </CardContent>
             </Card>
+          )}
 
-            {analysisResult && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-green-600" />
-                    AI Analysis Results
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <pre className="whitespace-pre-wrap text-sm text-gray-800">{analysisResult}</pre>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {optimizedConfig && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Zap className="w-5 h-5 text-yellow-600" />
-                    Optimized Configuration
-                  </CardTitle>
-                  <CardDescription>
-                    AI-generated optimized version of your .vela.yml file
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex gap-2 mb-4">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleCopyConfig(optimizedConfig)}
-                    >
-                      <Copy className="w-3 h-3 mr-1" />
-                      Copy
-                    </Button>
-                    <Button 
-                      size="sm"
-                      variant="outline" 
-                      onClick={() => {
-                        const blob = new Blob([optimizedConfig], { type: 'text/yaml' });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = '.vela-optimized.yml';
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        URL.revokeObjectURL(url);
-                        
-                        toast({
-                          title: "Config Downloaded",
-                          description: "Optimized .vela.yml file has been downloaded.",
-                        });
-                      }}
-                    >
-                      <Download className="w-3 h-3 mr-1" />
-                      Download
-                    </Button>
-                  </div>
-                  
-                  <div className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-                    <pre className="text-sm whitespace-pre-wrap">{optimizedConfig}</pre>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {uploadedConfig && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Original Configuration</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Textarea
-                    value={uploadedConfig}
-                    onChange={(e) => setUploadedConfig(e.target.value)}
-                    className="min-h-[300px] font-mono text-sm"
-                    placeholder="Your .vela.yml content will appear here..."
-                  />
-                </CardContent>
-              </Card>
-            )}
-          </div>
+          {uploadedConfig && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Original Configuration</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Textarea
+                  value={uploadedConfig}
+                  onChange={(e) => setUploadedConfig(e.target.value)}
+                  className="min-h-[300px] font-mono text-sm"
+                  placeholder="Your .vela.yml content will appear here..."
+                />
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
-        <TabsContent value="examples">
+        <TabsContent value="examples" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
