@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -6,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Zap, FileText, CheckCircle, AlertTriangle, Clock, Gauge, Copy, Download, Upload, FileCheck } from 'lucide-react';
+import { Zap, FileText, CheckCircle, AlertTriangle, Clock, Gauge, Copy, Download, Upload, FileCheck, Brain } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -306,13 +305,13 @@ steps:
       
       toast({
         title: "Analysis Complete",
-        description: "Your configuration has been analyzed with AI recommendations.",
+        description: "Your configuration has been analyzed with Groq AI recommendations.",
       });
     } catch (error) {
       console.error('Error analyzing config:', error);
       toast({
         title: "Analysis Failed",
-        description: "Failed to analyze configuration. Please check your OpenAI API key and try again.",
+        description: "Failed to analyze configuration. Please check your Groq API key and try again.",
         variant: "destructive"
       });
     } finally {
@@ -345,13 +344,13 @@ steps:
       
       toast({
         title: "Configuration Optimized",
-        description: "AI has generated an optimized version of your .vela.yml file.",
+        description: "Groq AI has generated an optimized version of your .vela.yml file.",
       });
     } catch (error) {
       console.error('Error optimizing config:', error);
       toast({
         title: "Optimization Failed",
-        description: "Failed to optimize configuration. Please check your OpenAI API key and try again.",
+        description: "Failed to optimize configuration. Please check your Groq API key and try again.",
         variant: "destructive"
       });
     } finally {
@@ -389,11 +388,11 @@ steps:
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Zap className="w-5 h-5 text-yellow-600" />
-            Vela Configuration Optimizer
+            <Brain className="w-5 h-5 text-purple-600" />
+            Groq AI Configuration Optimizer
           </CardTitle>
           <CardDescription>
-            AI-powered recommendations to improve your pipeline performance, cost, and reliability
+            Groq-powered recommendations to improve your pipeline performance, cost, and reliability
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -496,7 +495,7 @@ steps:
                 Upload Your .vela.yml File
               </CardTitle>
               <CardDescription>
-                Upload your existing Vela configuration file to get AI-powered analysis and optimization recommendations
+                Upload your existing Vela configuration file to get Groq AI-powered analysis and optimization recommendations
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -524,7 +523,7 @@ steps:
                   <Alert>
                     <FileCheck className="w-4 h-4" />
                     <AlertDescription>
-                      Configuration file loaded successfully! You can now analyze or optimize it.
+                      Configuration file loaded successfully! You can now analyze or optimize it with Groq AI.
                     </AlertDescription>
                   </Alert>
                   
@@ -532,9 +531,9 @@ steps:
                     <Button 
                       onClick={handleAnalyzeConfig}
                       disabled={analyzingConfig}
-                      className="bg-blue-600 hover:bg-blue-700"
+                      className="bg-purple-600 hover:bg-purple-700"
                     >
-                      {analyzingConfig ? 'Analyzing...' : 'Analyze with AI'}
+                      {analyzingConfig ? 'Analyzing...' : 'Analyze with Groq AI'}
                     </Button>
                     <Button 
                       onClick={handleOptimizeConfig}
@@ -553,8 +552,8 @@ steps:
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5 text-green-600" />
-                  AI Analysis Results
+                  <Brain className="w-5 h-5 text-purple-600" />
+                  Groq AI Analysis Results
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -569,11 +568,11 @@ steps:
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Zap className="w-5 h-5 text-yellow-600" />
-                  Optimized Configuration
+                  <Brain className="w-5 h-5 text-purple-600" />
+                  Groq AI Optimized Configuration
                 </CardTitle>
                 <CardDescription>
-                  AI-generated optimized version of your .vela.yml file
+                  Groq AI-generated optimized version of your .vela.yml file
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
