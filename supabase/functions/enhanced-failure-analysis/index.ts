@@ -2,6 +2,8 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
+const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const huggingFaceApiKey = Deno.env.get('HUGGINGFACE_API_KEY');
 const groqApiKey = Deno.env.get('GROQ_API_KEY');
 
 const corsHeaders = {
@@ -59,6 +61,33 @@ async function fetchVelaDocumentation(query: string) {
   }
 }
 
+// Free AI provider functions
+async function analyzeWithHuggingFace(prompt: string) {
+  if (!huggingFaceApiKey) throw new Error('Hugging Face API key not found');
+  
+  const response = await fetch('https://api-inference.huggingface.co/models/microsoft/DialoGPT-large', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${huggingFaceApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      inputs: prompt,
+      parameters: {
+        max_length: 2000,
+        temperature: 0.1,
+      }
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Hugging Face API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data[0]?.generated_text || 'Analysis could not be completed';
+}
+
 async function analyzeWithGroq(prompt: string) {
   if (!groqApiKey) throw new Error('Groq API key not found');
   
@@ -71,7 +100,34 @@ async function analyzeWithGroq(prompt: string) {
     body: JSON.stringify({
       model: 'llama3-8b-8192',
       messages: [
-        { role: 'system', content: 'You are an expert DevOps engineer and Vela CI/CD specialist. Analyze the provided build failure and provide detailed insights with actionable solutions.' },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.1,
+      max_tokens: 2000,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Groq API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.choices[0].message.content;
+}
+
+async function analyzeWithOpenAI(prompt: string) {
+  if (!openAIApiKey) throw new Error('OpenAI API key not found');
+  
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${openAIApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: `You are an expert DevOps engineer and Vela CI/CD specialist. Analyze the provided build failure and provide detailed insights.` },
         { role: 'user', content: prompt }
       ],
       temperature: 0.1,
@@ -80,7 +136,7 @@ async function analyzeWithGroq(prompt: string) {
   });
 
   if (!response.ok) {
-    throw new Error(`Groq API error: ${response.status}`);
+    throw new Error(`OpenAI API error: ${response.status}`);
   }
 
   const data = await response.json();
@@ -184,22 +240,30 @@ Format your response with clear sections and actionable steps.`;
     let analysis;
     let aiProvider = 'Basic Analysis';
 
-    // Try Groq first, fallback to basic analysis
+    // Try different AI providers in order of preference
     try {
-      if (groqApiKey) {
-        console.log('Analyzing with Groq Llama3-8B...');
+      if (openAIApiKey) {
+        console.log('Attempting analysis with OpenAI...');
+        analysis = await analyzeWithOpenAI(userPrompt);
+        aiProvider = 'OpenAI GPT-4o-mini';
+      } else if (groqApiKey) {
+        console.log('Attempting analysis with Groq...');
         analysis = await analyzeWithGroq(userPrompt);
         aiProvider = 'Groq Llama3-8B';
+      } else if (huggingFaceApiKey) {
+        console.log('Attempting analysis with Hugging Face...');
+        analysis = await analyzeWithHuggingFace(userPrompt);
+        aiProvider = 'Hugging Face DialoGPT';
       } else {
-        console.log('No Groq API key found, using basic analysis...');
+        console.log('No AI API keys found, using basic analysis...');
         const basicResult = basicAnalysis(logs, error, step);
         analysis = basicResult.analysis;
       }
-    } catch (groqError) {
-      console.error('Groq analysis failed, falling back to basic analysis:', groqError);
+    } catch (aiError) {
+      console.error('AI analysis failed, falling back to basic analysis:', aiError);
       const basicResult = basicAnalysis(logs, error, step);
       analysis = basicResult.analysis;
-      aiProvider = 'Basic Analysis (Groq failed)';
+      aiProvider = 'Basic Analysis (AI failed)';
     }
 
     // Extract different sections from the analysis
