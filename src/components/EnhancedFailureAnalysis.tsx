@@ -122,11 +122,11 @@ export const EnhancedFailureAnalysis = () => {
   return (
     <div className="space-y-6">
       {/* AI Provider Information */}
-      <Alert className="border-blue-200 bg-blue-50">
-        <Info className="w-4 h-4 text-blue-600" />
-        <AlertDescription className="text-blue-800">
-          <strong>Multiple AI Providers Supported:</strong> This analysis can use OpenAI, Groq (free), Hugging Face (free), or provide basic analysis without AI.
-          Add API keys for better results, or use it without any keys for basic analysis.
+      <Alert className="border-green-200 bg-green-50">
+        <Info className="w-4 h-4 text-green-600" />
+        <AlertDescription className="text-green-800">
+          <strong>Powered by Groq Llama3-8B:</strong> Fast, free AI analysis with Vela documentation context.
+          Enhanced failure analysis using cutting-edge open-source AI models.
         </AlertDescription>
       </Alert>
 
@@ -136,12 +136,12 @@ export const EnhancedFailureAnalysis = () => {
           <CardTitle className="flex items-center gap-2">
             <Brain className="w-5 h-5 text-purple-600" />
             Enhanced AI Failure Analysis
-            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 ml-auto">
-              Powered by Vela Docs + AI
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 ml-auto">
+              Groq + Vela Docs
             </Badge>
           </CardTitle>
           <CardDescription>
-            Deep failure analysis with Vela documentation context and AI-powered workarounds
+            Deep failure analysis with Vela documentation context and Groq AI-powered insights
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -170,10 +170,10 @@ export const EnhancedFailureAnalysis = () => {
             <Button 
               onClick={handleEnhancedAnalysis}
               disabled={isAnalyzing}
-              className="bg-purple-600 hover:bg-purple-700"
+              className="bg-green-600 hover:bg-green-700"
             >
               <Brain className="w-4 h-4 mr-2" />
-              {isAnalyzing ? 'Analyzing...' : 'Run Enhanced Analysis'}
+              {isAnalyzing ? 'Analyzing with Groq...' : 'Run Groq Analysis'}
             </Button>
           </div>
         </CardContent>
@@ -184,8 +184,8 @@ export const EnhancedFailureAnalysis = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Zap className="w-5 h-5 text-yellow-600" />
-              AI Analysis Results
+              <Zap className="w-5 h-5 text-green-600" />
+              Groq AI Analysis Results
               <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                 {analysis.aiProvider}
               </Badge>
