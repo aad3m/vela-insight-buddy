@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Brain, AlertTriangle, Lightbulb, Code, ExternalLink, Copy, BookOpen, Zap } from 'lucide-react';
+import { Brain, AlertTriangle, Lightbulb, Code, ExternalLink, Copy, BookOpen, Zap, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -20,6 +20,7 @@ interface EnhancedAnalysis {
     bestPractices: string;
   };
   velaDocs: string[];
+  aiProvider: string;
   timestamp: string;
 }
 
@@ -88,13 +89,13 @@ export const EnhancedFailureAnalysis = () => {
       
       toast({
         title: "Enhanced Analysis Complete",
-        description: "Deep analysis with Vela documentation context generated.",
+        description: `Analysis completed using ${data.aiProvider}`,
       });
     } catch (error) {
       console.error('Error in enhanced analysis:', error);
       toast({
         title: "Analysis Failed",
-        description: "Failed to perform enhanced analysis. Please check your OpenAI API key.",
+        description: "Enhanced analysis failed, but basic analysis is still available.",
         variant: "destructive"
       });
     } finally {
@@ -120,6 +121,15 @@ export const EnhancedFailureAnalysis = () => {
 
   return (
     <div className="space-y-6">
+      {/* AI Provider Information */}
+      <Alert className="border-blue-200 bg-blue-50">
+        <Info className="w-4 h-4 text-blue-600" />
+        <AlertDescription className="text-blue-800">
+          <strong>Multiple AI Providers Supported:</strong> This analysis can use OpenAI, Groq (free), Hugging Face (free), or provide basic analysis without AI.
+          Add API keys for better results, or use it without any keys for basic analysis.
+        </AlertDescription>
+      </Alert>
+
       {/* Current Failure Analysis */}
       <Card className="border-l-4 border-l-red-500">
         <CardHeader>
@@ -127,11 +137,11 @@ export const EnhancedFailureAnalysis = () => {
             <Brain className="w-5 h-5 text-purple-600" />
             Enhanced AI Failure Analysis
             <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 ml-auto">
-              Powered by Vela Docs
+              Powered by Vela Docs + AI
             </Badge>
           </CardTitle>
           <CardDescription>
-            Deep failure analysis with Vela documentation context and specific workarounds
+            Deep failure analysis with Vela documentation context and AI-powered workarounds
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -163,7 +173,7 @@ export const EnhancedFailureAnalysis = () => {
               className="bg-purple-600 hover:bg-purple-700"
             >
               <Brain className="w-4 h-4 mr-2" />
-              {isAnalyzing ? 'Analyzing with AI...' : 'Run Enhanced Analysis'}
+              {isAnalyzing ? 'Analyzing...' : 'Run Enhanced Analysis'}
             </Button>
           </div>
         </CardContent>
@@ -177,6 +187,9 @@ export const EnhancedFailureAnalysis = () => {
               <Zap className="w-5 h-5 text-yellow-600" />
               AI Analysis Results
               <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                {analysis.aiProvider}
+              </Badge>
+              <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200 ml-auto">
                 {new Date(analysis.timestamp).toLocaleTimeString()}
               </Badge>
             </CardTitle>
@@ -204,7 +217,7 @@ export const EnhancedFailureAnalysis = () => {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-sm text-gray-700">{analysis.sections.rootCause}</p>
+                      <p className="text-sm text-gray-700">{analysis.sections.rootCause || 'Analysis could not determine root cause'}</p>
                     </CardContent>
                   </Card>
 
@@ -216,7 +229,7 @@ export const EnhancedFailureAnalysis = () => {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-sm text-gray-700">{analysis.sections.bestPractices}</p>
+                      <p className="text-sm text-gray-700">{analysis.sections.bestPractices || 'No specific best practices identified'}</p>
                     </CardContent>
                   </Card>
                 </div>
@@ -252,7 +265,7 @@ export const EnhancedFailureAnalysis = () => {
                   <Lightbulb className="w-4 h-4 text-yellow-600" />
                   <AlertDescription className="text-yellow-800">
                     <strong>Quick Workarounds:</strong>
-                    <div className="mt-2 whitespace-pre-wrap">{analysis.sections.workarounds}</div>
+                    <div className="mt-2 whitespace-pre-wrap">{analysis.sections.workarounds || 'No specific workarounds identified'}</div>
                   </AlertDescription>
                 </Alert>
               </TabsContent>
@@ -262,7 +275,7 @@ export const EnhancedFailureAnalysis = () => {
                   <Lightbulb className="w-4 h-4 text-green-600" />
                   <AlertDescription className="text-green-800">
                     <strong>Long-term Solutions:</strong>
-                    <div className="mt-2 whitespace-pre-wrap">{analysis.sections.solutions}</div>
+                    <div className="mt-2 whitespace-pre-wrap">{analysis.sections.solutions || 'No specific solutions identified'}</div>
                   </AlertDescription>
                 </Alert>
               </TabsContent>
@@ -291,7 +304,7 @@ export const EnhancedFailureAnalysis = () => {
                   <Code className="w-4 h-4 text-blue-600" />
                   <AlertDescription className="text-blue-800">
                     <strong>Prevention Strategies:</strong>
-                    <div className="mt-2 whitespace-pre-wrap">{analysis.sections.prevention}</div>
+                    <div className="mt-2 whitespace-pre-wrap">{analysis.sections.prevention || 'No specific prevention strategies identified'}</div>
                   </AlertDescription>
                 </Alert>
               </TabsContent>

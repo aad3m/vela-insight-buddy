@@ -3,6 +3,8 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const huggingFaceApiKey = Deno.env.get('HUGGINGFACE_API_KEY');
+const groqApiKey = Deno.env.get('GROQ_API_KEY');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -59,6 +61,135 @@ async function fetchVelaDocumentation(query: string) {
   }
 }
 
+// Free AI provider functions
+async function analyzeWithHuggingFace(prompt: string) {
+  if (!huggingFaceApiKey) throw new Error('Hugging Face API key not found');
+  
+  const response = await fetch('https://api-inference.huggingface.co/models/microsoft/DialoGPT-large', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${huggingFaceApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      inputs: prompt,
+      parameters: {
+        max_length: 2000,
+        temperature: 0.1,
+      }
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Hugging Face API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data[0]?.generated_text || 'Analysis could not be completed';
+}
+
+async function analyzeWithGroq(prompt: string) {
+  if (!groqApiKey) throw new Error('Groq API key not found');
+  
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${groqApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'llama3-8b-8192',
+      messages: [
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.1,
+      max_tokens: 2000,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Groq API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.choices[0].message.content;
+}
+
+async function analyzeWithOpenAI(prompt: string) {
+  if (!openAIApiKey) throw new Error('OpenAI API key not found');
+  
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${openAIApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: `You are an expert DevOps engineer and Vela CI/CD specialist. Analyze the provided build failure and provide detailed insights.` },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.1,
+      max_tokens: 3000,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`OpenAI API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.choices[0].message.content;
+}
+
+// Fallback basic analysis without AI
+function basicAnalysis(logs: string, error: string, step: string) {
+  const analysis = `**Root Cause Analysis**: The pipeline failed at step "${step}" with error: ${error}
+
+**Immediate Workarounds**:
+- Check if the step configuration is correct
+- Verify that all required dependencies are available
+- Review the step's Docker image and commands
+
+**Proper Solutions**:
+- Examine the build logs for specific error patterns
+- Update pipeline configuration if needed
+- Check for resource constraints or permissions issues
+
+**Code Examples**:
+\`\`\`yaml
+steps:
+  - name: ${step}
+    image: # verify this image exists and is accessible
+    commands:
+      # check these commands are correct
+\`\`\`
+
+**Prevention**:
+- Add validation steps before the failing step
+- Use proper error handling in pipeline configuration
+- Test pipeline changes in a development environment
+
+**Vela Best Practices**:
+- Use specific image tags instead of 'latest'
+- Implement proper secret management
+- Add adequate logging for debugging
+`;
+
+  return {
+    analysis,
+    sections: {
+      rootCause: `The pipeline failed at step "${step}" with error: ${error}`,
+      workarounds: "Check step configuration, verify dependencies, review Docker image",
+      solutions: "Examine logs, update configuration, check resources/permissions", 
+      codeExamples: `steps:\n  - name: ${step}\n    image: # verify image\n    commands: # check commands`,
+      prevention: "Add validation, use error handling, test in dev environment",
+      bestPractices: "Use specific tags, manage secrets properly, add logging"
+    }
+  };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -73,25 +204,6 @@ serve(async (req) => {
     const velaQuery = `${error} ${step} ${logs}`.slice(0, 100);
     const velaDocs = await fetchVelaDocumentation(velaQuery);
     
-    const systemPrompt = `You are an expert DevOps engineer and Vela CI/CD specialist. You have access to the official Vela documentation and years of experience troubleshooting pipeline failures.
-
-Your expertise includes:
-- Deep understanding of Vela YAML syntax and configuration
-- Common pipeline failure patterns and their solutions
-- Docker container issues and debugging
-- Build optimization techniques
-- Security and secrets management in pipelines
-- Integration with various tools and services
-
-Analyze the provided build failure and:
-1. Identify the root cause with technical depth
-2. Provide specific, actionable workarounds
-3. Reference Vela documentation when applicable
-4. Suggest preventive measures and best practices
-5. Include code snippets for fixes when possible
-
-Be thorough but practical. Focus on solutions that can be implemented immediately.`;
-
     const velaDocsContext = velaDocs.length > 0 
       ? `\n\nRelevant Vela Documentation:\n${velaDocs.map(doc => `${doc.url}:\n${doc.content}`).join('\n\n')}`
       : '';
@@ -125,29 +237,34 @@ Please provide:
 
 Format your response with clear sections and actionable steps.`;
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        temperature: 0.1,
-        max_tokens: 3000,
-      }),
-    });
+    let analysis;
+    let aiProvider = 'Basic Analysis';
 
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
+    // Try different AI providers in order of preference
+    try {
+      if (openAIApiKey) {
+        console.log('Attempting analysis with OpenAI...');
+        analysis = await analyzeWithOpenAI(userPrompt);
+        aiProvider = 'OpenAI GPT-4o-mini';
+      } else if (groqApiKey) {
+        console.log('Attempting analysis with Groq...');
+        analysis = await analyzeWithGroq(userPrompt);
+        aiProvider = 'Groq Llama3-8B';
+      } else if (huggingFaceApiKey) {
+        console.log('Attempting analysis with Hugging Face...');
+        analysis = await analyzeWithHuggingFace(userPrompt);
+        aiProvider = 'Hugging Face DialoGPT';
+      } else {
+        console.log('No AI API keys found, using basic analysis...');
+        const basicResult = basicAnalysis(logs, error, step);
+        analysis = basicResult.analysis;
+      }
+    } catch (aiError) {
+      console.error('AI analysis failed, falling back to basic analysis:', aiError);
+      const basicResult = basicAnalysis(logs, error, step);
+      analysis = basicResult.analysis;
+      aiProvider = 'Basic Analysis (AI failed)';
     }
-
-    const data = await response.json();
-    const analysis = data.choices[0].message.content;
 
     // Extract different sections from the analysis
     const sections = {
@@ -163,6 +280,7 @@ Format your response with clear sections and actionable steps.`;
       analysis, 
       sections,
       velaDocs: velaDocs.map(doc => doc.url),
+      aiProvider,
       timestamp: new Date().toISOString()
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
