@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { AlertCircle, CheckCircle, Clock, Zap, TrendingUp, Users, GitBranch, Settings, LogOut, User } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, Zap, TrendingUp, Users, GitBranch, Settings, LogOut, User, Brain } from 'lucide-react';
 import { PipelineStatus } from '@/components/PipelineStatus';
 import { FailureAnalysis } from '@/components/FailureAnalysis';
 import { TeamMetrics } from '@/components/TeamMetrics';
@@ -13,6 +13,7 @@ import { ConfigOptimizer } from '@/components/ConfigOptimizer';
 import { SlackIntegration } from '@/components/SlackIntegration';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { EnhancedFailureAnalysis } from '@/components/EnhancedFailureAnalysis';
 
 const Index = () => {
   const { user, signOut, loading } = useAuth();
@@ -185,14 +186,18 @@ const Index = () => {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="pipelines" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 bg-white border border-gray-200">
+          <TabsList className="grid w-full grid-cols-6 bg-white border border-gray-200">
             <TabsTrigger value="pipelines" className="flex items-center gap-2">
               <GitBranch className="w-4 h-4" />
               Pipelines
             </TabsTrigger>
+            <TabsTrigger value="analysis" className="flex items-center gap-2">
+              <Brain className="w-4 h-4" />
+              Enhanced AI
+            </TabsTrigger>
             <TabsTrigger value="failures" className="flex items-center gap-2">
               <AlertCircle className="w-4 h-4" />
-              AI Analysis
+              Quick Analysis
             </TabsTrigger>
             <TabsTrigger value="metrics" className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4" />
@@ -210,6 +215,10 @@ const Index = () => {
 
           <TabsContent value="pipelines">
             <PipelineStatus />
+          </TabsContent>
+
+          <TabsContent value="analysis">
+            <EnhancedFailureAnalysis />
           </TabsContent>
 
           <TabsContent value="failures">
